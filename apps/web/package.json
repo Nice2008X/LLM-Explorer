@@ -1,0 +1,35 @@
+{
+  "name": "@llm-explorer/web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@llm-explorer/model-ir": "*",
+    "@llm-explorer/tensor-core": "*",
+    "@llm-explorer/hf-client": "*",
+    "@llm-explorer/adapter-gpt2": "*",
+    "@llm-explorer/adapter-llama": "*",
+    "@llm-explorer/adapter-mistral": "*",
+    "@llm-explorer/adapter-gemma": "*",
+    "@llm-explorer/adapter-qwen": "*",
+    "@llm-explorer/adapter-qwen3": "*",
+    "@llm-explorer/adapter-phi": "*",
+    "@llm-explorer/tokenizer": "*",
+    "@llm-explorer/interpretability": "*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "reactflow": "^11.11.4"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2"
+  }
+}
