@@ -1,0 +1,13 @@
+{
+  "name": "@llm-explorer/adapter-mistral",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@llm-explorer/model-ir": "*",
+    "@llm-explorer/tensor-core": "*",
+    "@llm-explorer/hf-client": "*",
+    "@llm-explorer/adapter-llama-family": "*"
+  }
+}

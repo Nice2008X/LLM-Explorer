@@ -30,7 +30,7 @@ const en = {
   "app.expandPanel": "Expand panel",
 
   "loader.title": "LLM Architecture Explorer",
-  "loader.subtitle": "Load any Hugging Face model with safetensors weights and inspect its structure, live.",
+  "loader.subtitle": "Load a Hugging Face model from a supported architecture — GPT-2, Llama, Mistral, Gemma, Qwen2, Qwen3, or Phi — with safetensors weights, and inspect its structure, live.",
   "loader.inputPlaceholder": "org/model-name",
   "loader.load": "Load",
   "loader.loading": "Loading…",
@@ -80,7 +80,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "app.expandPanel": "展开面板",
 
     "loader.title": "LLM 架构浏览器",
-    "loader.subtitle": "加载任意带有 safetensors 权重的 Hugging Face 模型，实时查看其结构。",
+    "loader.subtitle": "加载支持的 Hugging Face 模型架构（GPT-2、Llama、Mistral、Gemma、Qwen2、Qwen3 或 Phi）及其 safetensors 权重，实时查看其结构。",
     "loader.inputPlaceholder": "org/model-name",
     "loader.load": "加载",
     "loader.loading": "加载中…",
@@ -125,7 +125,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "app.expandPanel": "Expandir panel",
 
     "loader.title": "Explorador de arquitectura LLM",
-    "loader.subtitle": "Carga cualquier modelo de Hugging Face con pesos safetensors e inspecciona su estructura en vivo.",
+    "loader.subtitle": "Carga un modelo de Hugging Face de una arquitectura compatible (GPT-2, Llama, Mistral, Gemma, Qwen2, Qwen3 o Phi) con pesos safetensors, e inspecciona su estructura en vivo.",
     "loader.inputPlaceholder": "org/nombre-del-modelo",
     "loader.load": "Cargar",
     "loader.loading": "Cargando…",
@@ -170,7 +170,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "app.expandPanel": "Développer le panneau",
 
     "loader.title": "Explorateur d'architecture LLM",
-    "loader.subtitle": "Chargez n'importe quel modèle Hugging Face avec des poids safetensors et inspectez sa structure en direct.",
+    "loader.subtitle": "Chargez un modèle Hugging Face d'une architecture prise en charge (GPT-2, Llama, Mistral, Gemma, Qwen2, Qwen3 ou Phi) avec des poids safetensors, et inspectez sa structure en direct.",
     "loader.inputPlaceholder": "org/nom-du-modele",
     "loader.load": "Charger",
     "loader.loading": "Chargement…",
@@ -215,7 +215,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "app.expandPanel": "Panel ausklappen",
 
     "loader.title": "LLM-Architektur-Explorer",
-    "loader.subtitle": "Lade ein beliebiges Hugging-Face-Modell mit Safetensors-Gewichten und untersuche seine Struktur live.",
+    "loader.subtitle": "Lade ein Hugging-Face-Modell einer unterstützten Architektur (GPT-2, Llama, Mistral, Gemma, Qwen2, Qwen3 oder Phi) mit Safetensors-Gewichten und untersuche seine Struktur live.",
     "loader.inputPlaceholder": "org/modell-name",
     "loader.load": "Laden",
     "loader.loading": "Lädt…",
@@ -260,7 +260,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "app.expandPanel": "パネルを展開する",
 
     "loader.title": "LLM アーキテクチャエクスプローラー",
-    "loader.subtitle": "safetensors 形式の重みを持つ Hugging Face モデルを読み込み、その構造をライブで確認できます。",
+    "loader.subtitle": "対応アーキテクチャ（GPT-2、Llama、Mistral、Gemma、Qwen2、Qwen3、Phi のいずれか）の Hugging Face モデルを safetensors 形式の重みとともに読み込み、その構造をライブで確認できます。",
     "loader.inputPlaceholder": "org/モデル名",
     "loader.load": "読み込む",
     "loader.loading": "読み込み中…",
@@ -305,7 +305,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "app.expandPanel": "패널 펼치기",
 
     "loader.title": "LLM 아키텍처 탐색기",
-    "loader.subtitle": "safetensors 가중치를 가진 모든 Hugging Face 모델을 불러와 구조를 실시간으로 살펴보세요.",
+    "loader.subtitle": "지원되는 아키텍처(GPT-2, Llama, Mistral, Gemma, Qwen2, Qwen3, Phi 중 하나)의 Hugging Face 모델을 safetensors 가중치와 함께 불러와 구조를 실시간으로 살펴보세요.",
     "loader.inputPlaceholder": "org/모델-이름",
     "loader.load": "불러오기",
     "loader.loading": "불러오는 중…",
@@ -350,7 +350,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "app.expandPanel": "Expandir painel",
 
     "loader.title": "Explorador de arquitetura LLM",
-    "loader.subtitle": "Carregue qualquer modelo do Hugging Face com pesos safetensors e inspecione sua estrutura ao vivo.",
+    "loader.subtitle": "Carregue um modelo do Hugging Face de uma arquitetura compatível (GPT-2, Llama, Mistral, Gemma, Qwen2, Qwen3 ou Phi) com pesos safetensors e inspecione sua estrutura ao vivo.",
     "loader.inputPlaceholder": "org/nome-do-modelo",
     "loader.load": "Carregar",
     "loader.loading": "Carregando…",
@@ -395,7 +395,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "app.expandPanel": "Развернуть панель",
 
     "loader.title": "Обозреватель архитектуры LLM",
-    "loader.subtitle": "Загрузите любую модель Hugging Face с весами safetensors и изучите её структуру в реальном времени.",
+    "loader.subtitle": "Загрузите модель Hugging Face одной из поддерживаемых архитектур (GPT-2, Llama, Mistral, Gemma, Qwen2, Qwen3 или Phi) с весами safetensors и изучите её структуру в реальном времени.",
     "loader.inputPlaceholder": "org/название-модели",
     "loader.load": "Загрузить",
     "loader.loading": "Загрузка…",

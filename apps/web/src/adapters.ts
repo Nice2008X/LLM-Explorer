@@ -6,6 +6,7 @@ import { GemmaAdapter } from "@llm-explorer/adapter-gemma";
 import { QwenAdapter } from "@llm-explorer/adapter-qwen";
 import { Qwen3Adapter } from "@llm-explorer/adapter-qwen3";
 import { PhiAdapter } from "@llm-explorer/adapter-phi";
+import { Glm4Adapter } from "@llm-explorer/adapter-glm4";
 
 /**
  * Every architecture the explorer supports. Adding a new one means writing
@@ -16,9 +17,11 @@ import { PhiAdapter } from "@llm-explorer/adapter-phi";
  * ratio for Mistral; explicit head_dim, a (1+weight) RMSNorm, and
  * embedding scaling for Gemma; a bias on Q/K/V projections for Qwen2; a
  * per-head QK-Norm for Qwen3; fused Q/K/V and gate/up projections for
- * Phi — rather than separate copies of ~400 lines each).
+ * Phi; a sandwich norm (extra post-sub-layer RMSNorm) and partial rotary
+ * (only a leading slice of each head gets RoPE) for GLM-4 — rather than
+ * separate copies of ~400 lines each).
  */
-export const ADAPTERS: ModelAdapter[] = [GPT2Adapter, LlamaAdapter, MistralAdapter, GemmaAdapter, QwenAdapter, Qwen3Adapter, PhiAdapter];
+export const ADAPTERS: ModelAdapter[] = [GPT2Adapter, LlamaAdapter, MistralAdapter, GemmaAdapter, QwenAdapter, Qwen3Adapter, PhiAdapter, Glm4Adapter];
 
 // NOTE: this MVP's WeightProvider downloads the whole safetensors file up
 // front (fine for models this size — a few hundred KB to a few MB). A
@@ -34,4 +37,16 @@ export const PRESET_MODELS = [
   { repo: "yujiepan/qwen2-tiny-random", label: "Qwen2 · qwen2-tiny-random (2 layers, GQA 4:2 heads, Q/K/V bias)" },
   { repo: "tiny-random/qwen3", label: "Qwen3 · tiny-random/qwen3 (2 layers, GQA 2:1 heads, QK-Norm)" },
   { repo: "tiny-random/phi-4", label: "Phi-4 · tiny-random/phi-4 (2 layers, GQA 2:1 heads, fused QKV + gate/up)" },
+  { repo: "tiny-random/glm-4", label: "GLM-4 · tiny-random/glm-4 (2 layers, sandwich norm, partial rotary)" },
 ];
+
+// NOTE on DeepSeek LLM: architecturally it's plain Llama (LlamaAdapter loads
+// it with zero extra code — verified against yujiepan/deepseek-llm-tiny-random's
+// real config and safetensors), so any DeepSeek-LLM checkpoint with sane
+// dimensions works today by typing its repo id into the loader directly.
+// That specific tiny-random fixture isn't listed as a preset chip, though:
+// its hidden_size=2 / num_attention_heads=2 gives head_dim=1, which is odd —
+// RoPE rotates head_dim in (x, y) pairs and has no defined behavior for an
+// odd dimension (the same wall a real PyTorch RoPE implementation would hit),
+// so it fails to load every time with a clear error rather than silently
+// producing NaN. Not worth a one-click preset that's guaranteed to fail.

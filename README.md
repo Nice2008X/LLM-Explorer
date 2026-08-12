@@ -1,24 +1,28 @@
 # LLM Architecture Explorer
 
 An interactive, in-browser explorer and debugger for large language model
-internals. Point it at any Hugging Face repo that ships `safetensors`
-weights and it parses the model's real config and weights, renders its
-architecture as a navigable graph, runs an actual forward pass in the
-browser (no backend, no GPU), and lets you inspect every tensor, watch
-predictions form layer by layer, and run causal interventions (ablate a
-head, patch in an activation from another prompt) to see what actually
-drives the model's output.
+internals. Point it at a Hugging Face repo that ships `safetensors`
+weights for one of the [supported architectures](#supported-architectures)
+(GPT-2, Llama, Mistral, Gemma, Qwen2, Qwen3, or Phi-3/4) and it parses the
+model's real config and weights, renders its architecture as a navigable
+graph, runs an actual forward pass in the browser (no backend, no GPU),
+and lets you inspect every tensor, watch predictions form layer by layer,
+and run causal interventions (ablate a head, patch in an activation from
+another prompt) to see what actually drives the model's output.
 
 Everything runs client-side. Weights are fetched directly from the
 Hugging Face CDN and executed with a small dependency-free numeric engine
-written in TypeScript.
+written in TypeScript. Fetched files are cached in the browser's IndexedDB
+(keyed by their exact URL), so reloading the same repo later needs no
+network round trip at all — files over 50 MB are never written to that
+cache and always come straight from Hugging Face instead.
 
 ![Screenshot of the LLM Architecture Explorer: the model tree, an architecture graph with a selected transformer block, its Inspector panel, and a Logit Lens view of next-token predictions sharpening layer by layer](docs/screenshot.png)
 
 ## Features
 
 - **Load any compatible Hugging Face model** by repo id — no upload, no
-  server-side processing. Seven architecture families are supported out
+  server-side processing. Eight architecture families are supported out
   of the box (see [Supported architectures](#supported-architectures)).
 - **Architecture graph** — the model rendered as a node graph (via React
   Flow) at two levels of detail: the full architecture, and a
@@ -124,6 +128,10 @@ packages/
                           RoPE).
     phi/                    Wrapper with fused qkv_proj and gate_up_proj
                           projections (via ParameterRef slicing).
+    glm4/                   Wrapper with a sandwich norm (extra RMSNorm after
+                          each sub-layer's output, before the residual add)
+                          and partial rotary (RoPE applied to only a leading
+                          slice of each head).
 apps/
   web/                    React + React Flow UI: tree / architecture graph /
                           inspector / tensor explorer / inference panel / logit
@@ -142,17 +150,25 @@ apps/
 | Qwen2 / 2.5 | `adapter-qwen` | [`yujiepan/qwen2-tiny-random`](https://huggingface.co/yujiepan/qwen2-tiny-random) |
 | Qwen3 | `adapter-qwen3` | [`tiny-random/qwen3`](https://huggingface.co/tiny-random/qwen3) |
 | Phi-3 / Phi-4 | `adapter-phi` | [`tiny-random/phi-4`](https://huggingface.co/tiny-random/phi-4) |
+| GLM-4 | `adapter-glm4` | [`tiny-random/glm-4`](https://huggingface.co/tiny-random/glm-4) |
 
 These are all deliberately tiny (randomly-initialized, few-layer) test
 checkpoints, chosen so the full model can be loaded and explored instantly
 in a browser tab. Any other repo with the same `model_type` and a
 `model.safetensors` file will work too — type its repo id into the loader
-instead of picking a preset.
+instead of picking a preset. DeepSeek-LLM, for example, needs no adapter of
+its own: its `config.json` reports `model_type: "llama"` (it predates
+DeepSeek's MoE/latent-attention architectures), so `adapter-llama` already
+loads it — see
+[`yujiepan/deepseek-llm-tiny-random`](https://huggingface.co/yujiepan/deepseek-llm-tiny-random).
 
-Full-size, multimodal, or active-MoE architectures (e.g. Gemma 3n/4,
-GLM-4.5V, Qwen-VL) aren't supported yet — they need either genuinely
-large-checkpoint streaming or Model IR extensions this project doesn't
-have yet, rather than just another adapter.
+Full-size, multimodal, active-MoE, or state-space/hybrid architectures
+(e.g. Gemma 3n/4, GLM-4.5V, GLM-5, Qwen-VL, Llama 4, Phi-4-flash, Bamba)
+aren't supported yet — they need either genuinely large-checkpoint
+streaming or Model IR extensions this project doesn't have yet
+(Mixture-of-Experts routing, multi-head latent attention, vision towers,
+Mamba/state-space
+layers), rather than just another adapter.
 
 ## Getting started
 
@@ -270,6 +286,9 @@ project's own reimplementation of the same idea.
   [Supported architectures](#supported-architectures)).
 - Token attribution is occlusion-based only — no gradient-based
   attribution.
+- The IndexedDB cache is per-browser, not shared across users or devices —
+  it just saves a repeat visitor's own re-downloads, not bandwidth across
+  everyone loading the app.
 - No persistence: experiments, comparisons, and logit-lens runs live only
   in browser state for the current session.
 
