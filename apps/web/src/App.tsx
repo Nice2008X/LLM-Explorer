@@ -6,6 +6,7 @@ import { useTheme } from "./components/ThemeSwitcher.js";
 import { useTranslation } from "./components/LanguageContext.js";
 import { SettingsButton, SettingsPanel } from "./components/SettingsPanel.js";
 import { ModelLoader } from "./components/ModelLoader.js";
+import { LoadModelPanel } from "./components/LoadModelPanel.js";
 import { ModelInfoBar } from "./components/ModelInfoBar.js";
 import { ModelTree } from "./components/ModelTree.js";
 import { ArchitectureGraph, type GraphView } from "./components/ArchitectureGraph.js";
@@ -23,11 +24,13 @@ export function App() {
   const { theme, setTheme } = useTheme();
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [loadModelOpen, setLoadModelOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [view, setView] = useState<GraphView>({ kind: "architecture" });
   const [selectedTokenIndex, setSelectedTokenIndex] = useState<number | null>(null);
   const [compareEnabled, setCompareEnabled] = useState(false);
   const [bottomTab, setBottomTab] = useState<BottomTab>("tensor");
+  const [analysisBusy, setAnalysisBusy] = useState(false);
   const [treeCollapsed, setTreeCollapsed] = useLocalStorageState("panel:tree-collapsed", false);
   const [inspectorCollapsed, setInspectorCollapsed] = useLocalStorageState("panel:inspector-collapsed", false);
   const [bottomCollapsed, setBottomCollapsed] = useLocalStorageState("panel:bottom-collapsed", false);
@@ -67,24 +70,39 @@ export function App() {
   // stale blockId from the previous model would crash ArchitectureGraph.
   const safeView: GraphView = view.kind === "block" && !model.nodes[view.blockId] ? { kind: "architecture" } : view;
 
+  // Shared by the graph's double-click-to-expand gesture and the tree's
+  // mirrored double-click on a transformer block row — both should switch
+  // the graph to that block's detail view and select the block itself.
+  const enterBlock = (blockId: string) => {
+    setView({ kind: "block", blockId });
+    setSelectedId(blockId);
+  };
+
   const hasResult = inference.state.status === "ready" && !!inference.state.result;
   const analysisTabsEnabled = hasResult && !!state.adapter?.runInference;
+  const currentRepo = state.source?.kind === "huggingface" ? state.source.repo : undefined;
 
   return (
-    <div className="app">
+    <div className={"app" + (analysisBusy ? " app-busy" : "")}>
       <ModelInfoBar model={model} />
       <div className="top-right-controls">
-        <button
-          className="load-different"
-          onClick={() => {
-            const repo = promptForRepo();
-            if (repo) load(repo);
-          }}
-        >
-          {t("app.loadDifferentModel")}
-        </button>
-        <SettingsButton open={settingsOpen} onToggle={() => setSettingsOpen((v) => !v)} />
-        <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} theme={theme} onThemeChange={setTheme} />
+        <div className="control-group">
+          <button className="load-different" onClick={() => setLoadModelOpen((v) => !v)}>
+            {t("app.loadDifferentModel")}
+          </button>
+          <LoadModelPanel
+            open={loadModelOpen}
+            onClose={() => setLoadModelOpen(false)}
+            status={state.status}
+            error={state.error}
+            excludeRepo={currentRepo}
+            onLoad={load}
+          />
+        </div>
+        <div className="control-group">
+          <SettingsButton open={settingsOpen} onToggle={() => setSettingsOpen((v) => !v)} />
+          <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} theme={theme} onThemeChange={setTheme} />
+        </div>
       </div>
       <InferencePanel
         supported={!!state.tokenizer}
@@ -109,7 +127,7 @@ export function App() {
             <span className="pane-vertical-label">{t("app.modelTree")}</span>
           ) : (
             <div className="pane-tree-body">
-              <ModelTree model={model} selectedId={selectedId} onSelect={setSelectedId} />
+              <ModelTree model={model} selectedId={selectedId} onSelect={setSelectedId} onEnterBlock={enterBlock} />
             </div>
           )}
         </aside>
@@ -119,10 +137,7 @@ export function App() {
             view={safeView}
             selectedId={selectedId}
             onSelect={setSelectedId}
-            onEnterBlock={(blockId) => {
-              setView({ kind: "block", blockId });
-              setSelectedId(blockId);
-            }}
+            onEnterBlock={enterBlock}
             onExitBlock={() => setView({ kind: "architecture" })}
           />
         </main>
@@ -173,10 +188,23 @@ export function App() {
           />
         )}
         {!bottomCollapsed && bottomTab === "logitlens" && analysisTabsEnabled && state.tokenizer && (
-          <LogitLensPanel model={model} weightProvider={state.weightProvider} capture={inference.state.result!} tokenizer={state.tokenizer} />
+          <LogitLensPanel
+            model={model}
+            weightProvider={state.weightProvider}
+            capture={inference.state.result!}
+            tokenizer={state.tokenizer}
+            onBusyChange={setAnalysisBusy}
+          />
         )}
         {!bottomCollapsed && bottomTab === "attribution" && analysisTabsEnabled && state.tokenizer && (
-          <TokenAttributionPanel model={model} weightProvider={state.weightProvider} adapter={state.adapter!} tokenIds={inference.state.result!.tokenIds} tokenizer={state.tokenizer} />
+          <TokenAttributionPanel
+            model={model}
+            weightProvider={state.weightProvider}
+            adapter={state.adapter!}
+            tokenIds={inference.state.result!.tokenIds}
+            tokenizer={state.tokenizer}
+            onBusyChange={setAnalysisBusy}
+          />
         )}
         {!bottomCollapsed && bottomTab === "experiment" && analysisTabsEnabled && state.tokenizer && (
           <ExperimentPanel
@@ -188,13 +216,10 @@ export function App() {
             mainTokenIds={inference.state.result!.tokenIds}
             mainResult={inference.state.result!}
             promptBResult={promptB.state.result ?? null}
+            onBusyChange={setAnalysisBusy}
           />
         )}
       </section>
     </div>
   );
-}
-
-function promptForRepo(): string {
-  return window.prompt("Hugging Face model id (GPT-2 or Llama architecture, needs a model.safetensors file):", "hf-internal-testing/tiny-random-LlamaForCausalLM") ?? "";
 }

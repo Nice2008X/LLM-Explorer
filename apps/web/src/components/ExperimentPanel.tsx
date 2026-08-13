@@ -12,11 +12,13 @@ interface Props {
   mainTokenIds: number[];
   mainResult: ActivationCapture;
   promptBResult: ActivationCapture | null;
+  /** Reported whenever this panel's own background computation starts/stops — lets the app show a busy cursor while it runs. */
+  onBusyChange?: (busy: boolean) => void;
 }
 
 type Operation = "zero" | "zero_head" | "replace";
 
-export function ExperimentPanel({ model, weightProvider, adapter, tokenizer, selectedNode, mainTokenIds, mainResult, promptBResult }: Props) {
+export function ExperimentPanel({ model, weightProvider, adapter, tokenizer, selectedNode, mainTokenIds, mainResult, promptBResult, onBusyChange }: Props) {
   const [operation, setOperation] = useState<Operation>("zero");
   const [headIndex, setHeadIndex] = useState(0);
   const [tokenScope, setTokenScope] = useState<"all" | number>("all");
@@ -40,6 +42,7 @@ export function ExperimentPanel({ model, weightProvider, adapter, tokenizer, sel
   async function run() {
     setRunning(true);
     setError(null);
+    onBusyChange?.(true);
     try {
       const intervention: Intervention = {
         nodeId: selectedNode!.id,
@@ -56,6 +59,7 @@ export function ExperimentPanel({ model, weightProvider, adapter, tokenizer, sel
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setRunning(false);
+      onBusyChange?.(false);
     }
   }
 
@@ -105,6 +109,7 @@ export function ExperimentPanel({ model, weightProvider, adapter, tokenizer, sel
         </label>
 
         <button onClick={run} disabled={running}>
+          {running && <span className="spinner spinner-inline" />}
           {running ? "Running…" : "Run Experiment"}
         </button>
       </div>

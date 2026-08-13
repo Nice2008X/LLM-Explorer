@@ -1,16 +1,91 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Model, ModelNode } from "@llm-explorer/model-ir";
 
 interface Props {
   model: Model;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /** Mirrors the architecture graph's double-click-to-expand gesture: double-clicking a transformer block row switches the graph to that block's detail view, not just selects it here. */
+  onEnterBlock: (blockId: string) => void;
 }
 
-export function ModelTree({ model, selectedId, onSelect }: Props) {
+/** Node ids open by default: the root and its immediate children — deep enough to orient a user, shallow enough that a many-layer model doesn't flood the tree with every transformer block (and its attention/FFN internals) expanded. */
+function defaultOpenIds(model: Model): Set<string> {
+  const open = new Set<string>();
+  function walk(nodeId: string, depth: number) {
+    if (depth < 2) open.add(nodeId);
+    for (const childId of model.nodes[nodeId].children) walk(childId, depth + 1);
+  }
+  walk(model.rootId, 0);
+  return open;
+}
+
+/** Every ancestor of `nodeId`, walking parentId up to the root. */
+function ancestorsOf(model: Model, nodeId: string | null): string[] {
+  const ancestors: string[] = [];
+  let current = nodeId ? (model.nodes[nodeId]?.parentId ?? null) : null;
+  while (current) {
+    ancestors.push(current);
+    current = model.nodes[current]?.parentId ?? null;
+  }
+  return ancestors;
+}
+
+export function ModelTree({ model, selectedId, onSelect, onEnterBlock }: Props) {
+  const [openIds, setOpenIds] = useState<Set<string>>(() => defaultOpenIds(model));
+
+  // A different model was loaded — node ids are reused across architectures
+  // (every adapter names its root "model", its layer group "blocks", etc.),
+  // so the old open/closed set could otherwise persist into a differently
+  // shaped tree. Recompute the defaults for the tree actually being shown.
+  useEffect(() => {
+    setOpenIds(defaultOpenIds(model));
+  }, [model]);
+
+  // A node selected from outside the tree (single- or double-click in the
+  // architecture graph) needs to actually be visible here — force every one
+  // of its ancestors open, even ones the user had collapsed, rather than
+  // just flipping a `selected` class on a row that isn't rendered at all.
+  // The node itself is included too: double-clicking a transformer block to
+  // enter it selects that block, and its own children (rms1/attn/rms2/ffn)
+  // need to be revealed, not just the path down to it.
+  useEffect(() => {
+    if (!selectedId) return;
+    const idsToOpen = [selectedId, ...ancestorsOf(model, selectedId)];
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const id of idsToOpen) {
+        if (!next.has(id)) {
+          next.add(id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [model, selectedId]);
+
+  const toggle = (nodeId: string) => {
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) next.delete(nodeId);
+      else next.add(nodeId);
+      return next;
+    });
+  };
+
   return (
     <div className="model-tree">
-      <TreeNode model={model} nodeId={model.rootId} depth={0} selectedId={selectedId} onSelect={onSelect} />
+      <TreeNode
+        model={model}
+        nodeId={model.rootId}
+        depth={0}
+        selectedId={selectedId}
+        onSelect={onSelect}
+        onEnterBlock={onEnterBlock}
+        openIds={openIds}
+        onToggle={toggle}
+      />
     </div>
   );
 }
@@ -21,31 +96,51 @@ function TreeNode({
   depth,
   selectedId,
   onSelect,
+  onEnterBlock,
+  openIds,
+  onToggle,
 }: {
   model: Model;
   nodeId: string;
   depth: number;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onEnterBlock: (blockId: string) => void;
+  openIds: Set<string>;
+  onToggle: (nodeId: string) => void;
 }) {
   const node: ModelNode = model.nodes[nodeId];
   const hasChildren = node.children.length > 0;
-  // collapse transformer blocks below block 1 by default so a 32-layer model doesn't flood the tree
-  const [open, setOpen] = useState(depth < 2);
+  const open = openIds.has(nodeId);
+  const isSelected = nodeId === selectedId;
+  const rowRef = useRef<HTMLDivElement>(null);
+
+  // Runs whenever this row becomes the selected one — including the first
+  // render after a collapsed ancestor was force-opened to reveal it, since
+  // that mounts this row fresh with isSelected already true. `block:
+  // "nearest"` scrolls the tree pane's own overflow container just enough
+  // to bring the row into view, without also yanking the rest of the page.
+  useEffect(() => {
+    if (isSelected) rowRef.current?.scrollIntoView({ block: "nearest" });
+  }, [isSelected]);
 
   return (
     <div>
       <div
-        className={"tree-row" + (nodeId === selectedId ? " selected" : "")}
+        ref={rowRef}
+        className={"tree-row" + (isSelected ? " selected" : "")}
         style={{ paddingLeft: 8 + depth * 14 }}
         onClick={() => onSelect(nodeId)}
+        onDoubleClick={() => {
+          if (node.type === "transformer_block") onEnterBlock(nodeId);
+        }}
       >
         {hasChildren ? (
           <button
             className="tree-toggle"
             onClick={(e) => {
               e.stopPropagation();
-              setOpen((o) => !o);
+              onToggle(nodeId);
             }}
           >
             {open ? "▾" : "▸"}
@@ -59,7 +154,17 @@ function TreeNode({
       {hasChildren && open && (
         <div>
           {node.children.map((childId) => (
-            <TreeNode key={childId} model={model} nodeId={childId} depth={depth + 1} selectedId={selectedId} onSelect={onSelect} />
+            <TreeNode
+              key={childId}
+              model={model}
+              nodeId={childId}
+              depth={depth + 1}
+              selectedId={selectedId}
+              onSelect={onSelect}
+              onEnterBlock={onEnterBlock}
+              openIds={openIds}
+              onToggle={onToggle}
+            />
           ))}
         </div>
       )}

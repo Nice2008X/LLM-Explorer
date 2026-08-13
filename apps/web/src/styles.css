@@ -266,6 +266,8 @@ input, select { font-family: inherit; }
   font-size: 12px;
   white-space: pre-wrap;
 }
+/* Nested inside .load-model-panel, which already supplies its own card chrome (background/border/shadow) and header — strip this component's own so it doesn't render as a card-within-a-card. */
+.model-loader.embedded { width: auto; padding: 0; background: none; border: none; border-radius: 0; box-shadow: none; }
 
 /* --- App shell --- */
 .app { height: 100%; position: relative; display: flex; flex-direction: column; }
@@ -281,6 +283,10 @@ input, select { font-family: inherit; }
 }
 .app-loader-screen .top-right-controls { top: 16px; right: 16px; }
 
+/* Each trigger button and its popover share one of these, so the popover's
+   `right: 0` anchors under its own button rather than the whole controls bar. */
+.control-group { position: relative; display: flex; align-items: center; }
+
 .load-different {
   background: var(--bg-chip);
   border: 1px solid var(--border-default);
@@ -291,6 +297,36 @@ input, select { font-family: inherit; }
   transition: background-color var(--transition-fast);
 }
 .load-different:hover { background: var(--bg-hover); }
+
+.load-model-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 420px;
+  padding: 14px;
+  background: var(--bg-surface-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-elevated);
+  z-index: 20;
+}
+.load-model-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.load-model-panel-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+.load-model-panel-close:hover { background: var(--bg-hover); color: var(--text-primary); }
 
 /* --- Settings button + panel --- */
 .settings-toggle-btn {
@@ -780,7 +816,9 @@ input, select { font-family: inherit; }
 .view-tabs button.active { background: var(--bg-active); color: var(--text-primary); border-color: var(--accent); }
 .view-tabs button:disabled { opacity: 0.4; cursor: not-allowed; }
 
+.heatmap-wrap { display: flex; flex-direction: column; gap: 6px; }
 .heatmap-canvas { border: 1px solid var(--border-default); border-radius: var(--radius-sm); image-rendering: pixelated; max-width: 480px; max-height: 300px; }
+.heatmap-downsample-note { font-size: 11px; color: var(--text-tertiary); max-width: 480px; }
 .raw-grid-scroll { max-width: 520px; max-height: 320px; overflow: auto; border: 1px solid var(--border-default); border-radius: var(--radius-sm); }
 .raw-grid { border-collapse: collapse; font-size: 10px; font-family: ui-monospace, monospace; }
 .raw-grid td { border: 1px solid var(--border-hairline); padding: 2px 5px; text-align: right; color: var(--text-secondary); }
@@ -794,6 +832,27 @@ input, select { font-family: inherit; }
 .histogram-bar { flex: 1; background: var(--accent); min-height: 1px; border-radius: 1px 1px 0 0; }
 
 .empty-hint { color: var(--text-tertiary); font-size: 12px; padding: 16px; }
+
+/* --- Background-job indicators (Logit Lens / Token Attribution / Experiment) --- */
+.loading-hint { display: flex; align-items: center; gap: 10px; color: var(--text-tertiary); font-size: 12px; padding: 16px; }
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border: 2px solid var(--border-default);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+.spinner-inline { width: 12px; height: 12px; margin-right: 8px; border-color: rgba(255, 255, 255, 0.35); border-top-color: #fff; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Applied to the app root while a tab's background computation (logit lens,
+   token attribution, an experiment run) is in flight — the cursor is the
+   one cue visible no matter where on screen the pointer happens to be,
+   independent of whether the panel that's actually working is in view. */
+.app-busy, .app-busy * { cursor: progress !important; }
 
 /* --- Attention view --- */
 .attention-view { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-hairline); max-width: 560px; }

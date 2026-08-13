@@ -9,9 +9,11 @@ interface Props {
   adapter: ModelAdapter;
   tokenIds: number[];
   tokenizer: Tokenizer;
+  /** Reported whenever this panel's own background computation starts/stops — lets the app show a busy cursor while it runs. */
+  onBusyChange?: (busy: boolean) => void;
 }
 
-export function TokenAttributionPanel({ model, weightProvider, adapter, tokenIds, tokenizer }: Props) {
+export function TokenAttributionPanel({ model, weightProvider, adapter, tokenIds, tokenizer, onBusyChange }: Props) {
   const [result, setResult] = useState<TokenAttributionResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,25 +22,35 @@ export function TokenAttributionPanel({ model, weightProvider, adapter, tokenIds
     let cancelled = false;
     setLoading(true);
     setError(null);
+    onBusyChange?.(true);
     computeTokenAttribution(model, weightProvider, adapter, tokenIds)
       .then((r) => {
         if (!cancelled) {
           setResult(r);
           setLoading(false);
+          onBusyChange?.(false);
         }
       })
       .catch((err) => {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : String(err));
           setLoading(false);
+          onBusyChange?.(false);
         }
       });
     return () => {
       cancelled = true;
+      onBusyChange?.(false);
     };
   }, [model, weightProvider, adapter, tokenIds]);
 
-  if (loading) return <div className="empty-hint">Occluding each token in turn and re-running ({tokenIds.length + 1} forward passes)…</div>;
+  if (loading)
+    return (
+      <div className="loading-hint">
+        <span className="spinner" />
+        Occluding each token in turn and re-running ({tokenIds.length + 1} forward passes)…
+      </div>
+    );
   if (error) return <div className="inference-error">{error}</div>;
   if (!result) return null;
 

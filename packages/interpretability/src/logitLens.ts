@@ -1,5 +1,6 @@
 import type { ActivationCapture, Model, WeightProvider } from "@llm-explorer/model-ir";
 import { gemmaRmsNorm, layerNorm, linear, rmsNorm, softmaxRow, tensorToMatrix, tensorToVector, type Matrix } from "@llm-explorer/nn-ops";
+import { yieldToBrowser } from "./yield.js";
 
 export interface LogitLensEntry {
   nodeId: string;
@@ -25,6 +26,11 @@ export async function computeLogitLens(
   capture: ActivationCapture,
   options: { tokenIndex?: number; topK?: number } = {}
 ): Promise<LogitLensEntry[]> {
+  // Yield before starting: lets the "loading" state a caller just set
+  // actually reach the screen before the (synchronous, uninterrupted)
+  // tensor loads and per-layer projections below begin.
+  await yieldToBrowser();
+
   const cfg = model.config;
   const topK = options.topK ?? 5;
   const S = capture.tokenIds.length;
@@ -82,6 +88,11 @@ export async function computeLogitLens(
   for (const c of candidates) {
     const row = c.hidden?.[tokenIndex];
     if (!row) continue;
+    // A large vocabulary (real GLM-4/Qwen-class checkpoints run 150K+
+    // tokens) makes this projection+sort per layer add up across a deep
+    // model — yield so a many-layer run doesn't lock up the tab for its
+    // whole duration in one uninterrupted block.
+    await yieldToBrowser();
     const normedRow = c.alreadyNormed ? row : normFn(row);
     const logitsRow = linear([normedRow], lmHeadW, null, "out_in")[0];
     const probs = softmaxRow(logitsRow);

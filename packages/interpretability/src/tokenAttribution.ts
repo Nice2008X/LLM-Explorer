@@ -1,4 +1,5 @@
 import type { Model, ModelAdapter, WeightProvider } from "@llm-explorer/model-ir";
+import { yieldToBrowser } from "./yield.js";
 
 export interface TokenAttributionEntry {
   tokenIndex: number;
@@ -36,6 +37,10 @@ export async function computeTokenAttribution(
   if (!adapter.runInference) throw new Error(`${adapter.displayName} does not support running inference`);
 
   const S = tokenIds.length;
+  // Yield before the very first pass too: this lets the "loading" state a
+  // caller just set actually reach the screen before the (synchronous,
+  // uninterrupted) work of a single forward pass begins.
+  await yieldToBrowser();
   const baseline = await adapter.runInference(model, weightProvider, tokenIds);
   const vocab = baseline.logits.shape[1];
   const lastRow = Array.from(baseline.logits.data.slice((S - 1) * vocab, S * vocab));
@@ -46,6 +51,7 @@ export async function computeTokenAttribution(
 
   const entries: TokenAttributionEntry[] = [];
   for (let t = 0; t < S; t++) {
+    await yieldToBrowser();
     const occluded = await adapter.runInference(model, weightProvider, tokenIds, [{ nodeId: embedNodeId, operation: "zero", tokenIndex: t }]);
     const occRow = Array.from(occluded.logits.data.slice((S - 1) * vocab, S * vocab));
     entries.push({ tokenIndex: t, logitDrop: baselineLogit - occRow[targetTokenId] });

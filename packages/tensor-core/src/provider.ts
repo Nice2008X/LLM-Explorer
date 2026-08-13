@@ -11,10 +11,21 @@ import { parseSafetensorsHeader, readTensor, type SafetensorsFile } from "./safe
  * decodes just the requested slice. For multi-GB checkpoints the same
  * interface would be backed by a server that does true byte-range HTTP reads
  * instead of an in-memory buffer — nothing above this provider would change.
+ *
+ * loadTensor() results are cached by (parameterId, slice) for the lifetime
+ * of this provider (i.e. the lifetime of the loaded model). Every adapter's
+ * runInference() reloads every weight it needs on each call — fine for one
+ * forward pass, but Token Attribution and Experiment interventions call it
+ * repeatedly against the *same* unchanged weights, and decoding is a real
+ * per-element byte-format conversion (see readTensor), not a cheap slice.
+ * Safe to cache the returned Tensor object itself rather than a copy: every
+ * consumer (tensorToMatrix/tensorToVector, this app's canvas renderers)
+ * only ever reads a Tensor's `data`, never writes back into it.
  */
 export class SafetensorsWeightProvider implements WeightProvider {
   id: string;
   private file: SafetensorsFile;
+  private tensorCache = new Map<string, Tensor>();
 
   constructor(id: string, buffer: ArrayBuffer) {
     this.id = id;
@@ -32,7 +43,17 @@ export class SafetensorsWeightProvider implements WeightProvider {
   }
 
   async loadTensor(parameterId: string, options?: TensorSlice): Promise<Tensor> {
-    return readTensor(this.file, parameterId, options);
+    // A given call site always requests the same slice of a given name (a
+    // node's ParameterRef is fixed at graph-build time), so this key is
+    // stable across repeated calls — it just needs to distinguish e.g.
+    // GPT-2's c_attn sliced into q/k/v from the unsliced tensor itself.
+    const cacheKey = options ? `${parameterId}::${JSON.stringify(options)}` : parameterId;
+    const cached = this.tensorCache.get(cacheKey);
+    if (cached) return cached;
+
+    const tensor = readTensor(this.file, parameterId, options);
+    this.tensorCache.set(cacheKey, tensor);
+    return tensor;
   }
 
   private toParameterRef(name: string, entry: { shape: number[]; dtype: string }): ParameterRef {

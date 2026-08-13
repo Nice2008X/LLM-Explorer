@@ -34,6 +34,7 @@ const en = {
   "loader.inputPlaceholder": "org/model-name",
   "loader.load": "Load",
   "loader.loading": "Loading…",
+  "loader.close": "Close",
 
   "inference.promptA": "Prompt A",
   "inference.promptB": "Prompt B",
@@ -84,6 +85,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "loader.inputPlaceholder": "org/model-name",
     "loader.load": "加载",
     "loader.loading": "加载中…",
+    "loader.close": "关闭",
 
     "inference.promptA": "提示词 A",
     "inference.promptB": "提示词 B",
@@ -129,6 +131,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "loader.inputPlaceholder": "org/nombre-del-modelo",
     "loader.load": "Cargar",
     "loader.loading": "Cargando…",
+    "loader.close": "Cerrar",
 
     "inference.promptA": "Prompt A",
     "inference.promptB": "Prompt B",
@@ -174,6 +177,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "loader.inputPlaceholder": "org/nom-du-modele",
     "loader.load": "Charger",
     "loader.loading": "Chargement…",
+    "loader.close": "Fermer",
 
     "inference.promptA": "Prompt A",
     "inference.promptB": "Prompt B",
@@ -219,6 +223,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "loader.inputPlaceholder": "org/modell-name",
     "loader.load": "Laden",
     "loader.loading": "Lädt…",
+    "loader.close": "Schließen",
 
     "inference.promptA": "Prompt A",
     "inference.promptB": "Prompt B",
@@ -264,6 +269,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "loader.inputPlaceholder": "org/モデル名",
     "loader.load": "読み込む",
     "loader.loading": "読み込み中…",
+    "loader.close": "閉じる",
 
     "inference.promptA": "プロンプト A",
     "inference.promptB": "プロンプト B",
@@ -309,6 +315,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "loader.inputPlaceholder": "org/모델-이름",
     "loader.load": "불러오기",
     "loader.loading": "불러오는 중…",
+    "loader.close": "닫기",
 
     "inference.promptA": "프롬프트 A",
     "inference.promptB": "프롬프트 B",
@@ -354,6 +361,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "loader.inputPlaceholder": "org/nome-do-modelo",
     "loader.load": "Carregar",
     "loader.loading": "Carregando…",
+    "loader.close": "Fechar",
 
     "inference.promptA": "Prompt A",
     "inference.promptB": "Prompt B",
@@ -399,6 +407,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "loader.inputPlaceholder": "org/название-модели",
     "loader.load": "Загрузить",
     "loader.loading": "Загрузка…",
+    "loader.close": "Закрыть",
 
     "inference.promptA": "Промпт A",
     "inference.promptB": "Промпт B",

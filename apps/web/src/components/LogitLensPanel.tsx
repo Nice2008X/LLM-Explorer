@@ -8,9 +8,11 @@ interface Props {
   weightProvider: WeightProvider;
   capture: ActivationCapture;
   tokenizer: Tokenizer;
+  /** Reported whenever this panel's own background computation starts/stops — lets the app show a busy cursor while it runs. */
+  onBusyChange?: (busy: boolean) => void;
 }
 
-export function LogitLensPanel({ model, weightProvider, capture, tokenizer }: Props) {
+export function LogitLensPanel({ model, weightProvider, capture, tokenizer, onBusyChange }: Props) {
   const [tokenIndex, setTokenIndex] = useState(capture.tokenIds.length - 1);
   const [layers, setLayers] = useState<LogitLensEntry[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -18,14 +20,17 @@ export function LogitLensPanel({ model, weightProvider, capture, tokenizer }: Pr
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    onBusyChange?.(true);
     computeLogitLens(model, weightProvider, capture, { tokenIndex, topK: 5 }).then((result) => {
       if (!cancelled) {
         setLayers(result);
         setLoading(false);
+        onBusyChange?.(false);
       }
     });
     return () => {
       cancelled = true;
+      onBusyChange?.(false);
     };
   }, [model, weightProvider, capture, tokenIndex]);
 
@@ -46,7 +51,12 @@ export function LogitLensPanel({ model, weightProvider, capture, tokenizer }: Pr
         </div>
       </div>
 
-      {loading && <div className="empty-hint">Projecting each layer through the LM head…</div>}
+      {loading && (
+        <div className="loading-hint">
+          <span className="spinner" />
+          Projecting each layer through the LM head…
+        </div>
+      )}
 
       {!loading && layers && (
         <div className="logit-lens-layers">
