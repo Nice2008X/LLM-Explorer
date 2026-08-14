@@ -144,7 +144,13 @@ export interface WeightProvider {
 // ---------------------------------------------------------------------------
 
 export type ModelSource =
-  | { kind: "huggingface"; repo: string; revision?: string };
+  | { kind: "huggingface"; repo: string; revision?: string }
+  | { kind: "local"; name: string; files: Record<string, ArrayBuffer> };
+
+/** A human-readable label for a source — the HF repo id, or the display name chosen when the local files were picked. */
+export function modelSourceLabel(source: ModelSource): string {
+  return source.kind === "huggingface" ? source.repo : source.name;
+}
 
 export interface ModelMetadata {
   architecture: string;

@@ -1,6 +1,6 @@
 import type { Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@llm-explorer/model-ir";
 import { SafetensorsWeightProvider } from "@llm-explorer/tensor-core";
-import { loadHfSafetensorsMetadata } from "@llm-explorer/hf-client";
+import { loadSafetensorsMetadata } from "@llm-explorer/hf-client";
 import { buildModelConfig, buildGraph, type GPT2RawConfig } from "./graph.js";
 import { runInference } from "./inference.js";
 
@@ -16,7 +16,7 @@ export const GPT2Adapter: ModelAdapter = {
   },
 
   async loadMetadata(source: ModelSource): Promise<ModelMetadata> {
-    const { rawConfig, weightIndex, weightsBuffer } = await loadHfSafetensorsMetadata<GPT2RawConfig>(source);
+    const { rawConfig, weightIndex, weightsBuffer } = await loadSafetensorsMetadata<GPT2RawConfig>(source);
 
     return {
       architecture: (rawConfig.architectures && rawConfig.architectures[0]) || "GPT2LMHeadModel",

@@ -5,8 +5,8 @@ interface Props {
   model: Model;
   selectedId: string | null;
   onSelect: (id: string) => void;
-  /** Mirrors the architecture graph's double-click-to-expand gesture: double-clicking a transformer block row switches the graph to that block's detail view, not just selects it here. */
-  onEnterBlock: (blockId: string) => void;
+  /** Double-clicking any row jumps the graph to whichever view actually contains that node (a transformer block's detail view, or back out to the top-level architecture view for a node outside any block) and selects it there — not just a transformer-block-only "expand" gesture. */
+  onNavigate: (nodeId: string) => void;
   /** Per-node activation magnitude (L2 norm) from the last run — lets a user spot an unusually "loud" layer without opening every node. Undefined (or a node missing from it) means no run yet / no activation recorded for that node. */
   activationMagnitudeById?: Record<string, number>;
 }
@@ -33,7 +33,7 @@ function ancestorsOf(model: Model, nodeId: string | null): string[] {
   return ancestors;
 }
 
-export function ModelTree({ model, selectedId, onSelect, onEnterBlock, activationMagnitudeById }: Props) {
+export function ModelTree({ model, selectedId, onSelect, onNavigate, activationMagnitudeById }: Props) {
   const [openIds, setOpenIds] = useState<Set<string>>(() => defaultOpenIds(model));
 
   // Node count is bounded by architecture size (dozens to a couple hundred
@@ -94,7 +94,7 @@ export function ModelTree({ model, selectedId, onSelect, onEnterBlock, activatio
         depth={0}
         selectedId={selectedId}
         onSelect={onSelect}
-        onEnterBlock={onEnterBlock}
+        onNavigate={onNavigate}
         openIds={openIds}
         onToggle={toggle}
         activationMagnitudeById={activationMagnitudeById}
@@ -110,7 +110,7 @@ function TreeNode({
   depth,
   selectedId,
   onSelect,
-  onEnterBlock,
+  onNavigate,
   openIds,
   onToggle,
   activationMagnitudeById,
@@ -121,7 +121,7 @@ function TreeNode({
   depth: number;
   selectedId: string | null;
   onSelect: (id: string) => void;
-  onEnterBlock: (blockId: string) => void;
+  onNavigate: (nodeId: string) => void;
   openIds: Set<string>;
   onToggle: (nodeId: string) => void;
   activationMagnitudeById?: Record<string, number>;
@@ -149,9 +149,7 @@ function TreeNode({
         className={"tree-row" + (isSelected ? " selected" : "")}
         style={{ paddingLeft: 8 + depth * 14 }}
         onClick={() => onSelect(nodeId)}
-        onDoubleClick={() => {
-          if (node.type === "transformer_block") onEnterBlock(nodeId);
-        }}
+        onDoubleClick={() => onNavigate(nodeId)}
       >
         {hasChildren ? (
           <button
@@ -184,7 +182,7 @@ function TreeNode({
               depth={depth + 1}
               selectedId={selectedId}
               onSelect={onSelect}
-              onEnterBlock={onEnterBlock}
+              onNavigate={onNavigate}
               openIds={openIds}
               onToggle={onToggle}
               activationMagnitudeById={activationMagnitudeById}

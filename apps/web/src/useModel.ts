@@ -1,8 +1,15 @@
 import { useCallback, useState } from "react";
 import type { Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@llm-explorer/model-ir";
-import { peekModelType } from "@llm-explorer/hf-client";
+import { fetchArrayBuffer, hfResolveUrl, peekModelType } from "@llm-explorer/hf-client";
 import { loadTokenizer, type Tokenizer } from "@llm-explorer/tokenizer";
 import { ADAPTERS } from "./adapters.js";
+
+/** The exact bytes of each source file, kept around purely so "save model to disk" can hand the user back byte-identical files rather than re-serializing anything. */
+export interface ModelRawFiles {
+  configBytes?: ArrayBuffer;
+  weightsBytes?: ArrayBuffer;
+  tokenizerBytes?: ArrayBuffer;
+}
 
 export interface ModelState {
   status: "idle" | "loading" | "ready" | "error";
@@ -14,16 +21,24 @@ export interface ModelState {
   source?: ModelSource;
   /** Present only if the repo ships a tokenizer.json this app understands — inference/activation features need it, static architecture browsing doesn't. */
   tokenizer?: Tokenizer;
+  rawFiles?: ModelRawFiles;
+}
+
+/** config.json/tokenizer.json are small — a Hugging Face source hits the IndexedDB cache (already populated by loadMetadata/loadTokenizer above, so this is free) and a local source just reads the file it already has in memory. Missing/failed reads (e.g. no tokenizer.json) resolve to undefined rather than failing the whole load. */
+async function readRawFile(source: ModelSource, filename: string): Promise<ArrayBuffer | undefined> {
+  try {
+    return source.kind === "local" ? source.files[filename] : await fetchArrayBuffer(hfResolveUrl(source, filename));
+  } catch {
+    return undefined;
+  }
 }
 
 export function useModel() {
   const [state, setState] = useState<ModelState>({ status: "idle" });
 
-  const load = useCallback(async (repo: string) => {
+  const loadFromSource = useCallback(async (source: ModelSource) => {
     setState({ status: "loading" });
     try {
-      const source: ModelSource = { kind: "huggingface", repo: repo.trim() };
-
       // Read just enough of config.json to know what kind of model this is,
       // *before* any adapter commits to fetching (and possibly misreading)
       // its weights. This is the actual extension point for "lots of
@@ -46,13 +61,40 @@ export function useModel() {
       // one at all — only the "run inference" panel does.
       const tokenizer = await loadTokenizer(source).catch(() => undefined);
 
-      setState({ status: "ready", model, metadata, weightProvider, adapter, source, tokenizer });
+      // The weights buffer is already sitting in `metadata` — reusing it
+      // here avoids a second download of what can be a large file. Only
+      // config.json/tokenizer.json need a (cheap) separate read.
+      const [configBytes, tokenizerBytes] = await Promise.all([readRawFile(source, "config.json"), readRawFile(source, "tokenizer.json")]);
+      const rawFiles: ModelRawFiles = { configBytes, weightsBytes: metadata.weightsBuffer, tokenizerBytes };
+
+      setState({ status: "ready", model, metadata, weightProvider, adapter, source, tokenizer, rawFiles });
     } catch (err) {
       setState({ status: "error", error: err instanceof Error ? err.message : String(err) });
     }
   }, []);
 
+  const load = useCallback((repo: string) => loadFromSource({ kind: "huggingface", repo: repo.trim() }), [loadFromSource]);
+
+  const loadLocalFiles = useCallback(
+    async (files: { name: string; config: File; weights: File; tokenizer?: File }) => {
+      setState({ status: "loading" });
+      try {
+        const [configBytes, weightsBytes, tokenizerBytes] = await Promise.all([
+          files.config.arrayBuffer(),
+          files.weights.arrayBuffer(),
+          files.tokenizer?.arrayBuffer(),
+        ]);
+        const sourceFiles: Record<string, ArrayBuffer> = { "config.json": configBytes, "model.safetensors": weightsBytes };
+        if (tokenizerBytes) sourceFiles["tokenizer.json"] = tokenizerBytes;
+        await loadFromSource({ kind: "local", name: files.name, files: sourceFiles });
+      } catch (err) {
+        setState({ status: "error", error: err instanceof Error ? err.message : String(err) });
+      }
+    },
+    [loadFromSource]
+  );
+
   const reset = useCallback(() => setState({ status: "idle" }), []);
 
-  return { state, load, reset };
+  return { state, load, loadLocalFiles, reset };
 }

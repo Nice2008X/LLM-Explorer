@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import ReactFlow, { Background, Controls, Handle, Position, type Edge as RFEdge, type Node as RFNode, type ReactFlowInstance } from "reactflow";
+import ReactFlow, { Background, ControlButton, Controls, Handle, Position, type Edge as RFEdge, type Node as RFNode, type ReactFlowInstance } from "reactflow";
 import "reactflow/dist/style.css";
 import type { Model, ModelNode } from "@llm-explorer/model-ir";
 import { componentRegistry } from "../registry.js";
 import { layeredLayout } from "../layout.js";
 import { buildLevel1Graph, buildLevel2Graph, ELLIPSIS } from "../graphUtils.js";
+import { useTranslation } from "./LanguageContext.js";
 
 export type GraphView = { kind: "architecture" } | { kind: "block"; blockId: string };
 
@@ -15,6 +16,9 @@ interface Props {
   onSelect: (id: string) => void;
   onEnterBlock: (blockId: string) => void;
   onExitBlock: () => void;
+  /** Whether the surrounding panels (prediction, tree, inspector, bottom) are currently collapsed to give the graph maximum space. */
+  isMaxFrame: boolean;
+  onToggleMaxFrame: () => void;
 }
 
 interface IRNodeData {
@@ -40,7 +44,8 @@ function IRNodeComponent({ data }: { data: IRNodeData }) {
 
 const nodeTypes = { ir: IRNodeComponent };
 
-export function ArchitectureGraph({ model, view, selectedId, onSelect, onEnterBlock, onExitBlock }: Props) {
+export function ArchitectureGraph({ model, view, selectedId, onSelect, onEnterBlock, onExitBlock, isMaxFrame, onToggleMaxFrame }: Props) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const rfInstanceRef = useRef<ReactFlowInstance | null>(null);
 
@@ -180,7 +185,11 @@ export function ArchitectureGraph({ model, view, selectedId, onSelect, onEnterBl
         elementsSelectable
       >
         <Background />
-        <Controls showInteractive={false} />
+        <Controls showInteractive={false}>
+          <ControlButton onClick={onToggleMaxFrame} title={isMaxFrame ? t("graph.restorePanels") : t("graph.maximizeGraph")}>
+            <span className="control-maxframe-icon">{isMaxFrame ? "⤡" : "⤢"}</span>
+          </ControlButton>
+        </Controls>
       </ReactFlow>
     </div>
   );

@@ -1,5 +1,5 @@
 import type { ModelSource } from "@llm-explorer/model-ir";
-import { fetchJson, hfResolveUrl } from "@llm-explorer/hf-client";
+import { fetchJson, hfResolveUrl, readLocalJson } from "@llm-explorer/hf-client";
 import { bpeMerge } from "./bpe.js";
 import { gpt2ByteDecode, gpt2Pretokenize, resolveByteLevel, type PreTokenizerSpec } from "./gpt2Pretokenize.js";
 import { normalizerHasPrepend, normalizerRequiresNFC, spBpeDecodePieces, spBpePretokenize, type NormalizerSpec } from "./llamaPretokenize.js";
@@ -40,7 +40,8 @@ interface RawTokenizerJson {
  * normalizerHasPrepend's doc comments for the specific ones).
  */
 export async function loadTokenizer(source: ModelSource): Promise<Tokenizer> {
-  const raw = await fetchJson<RawTokenizerJson>(hfResolveUrl(source, "tokenizer.json"));
+  const raw =
+    source.kind === "local" ? readLocalJson<RawTokenizerJson>(source, "tokenizer.json") : await fetchJson<RawTokenizerJson>(hfResolveUrl(source, "tokenizer.json"));
   if (raw.model.type !== "BPE") {
     throw new Error(`Unsupported tokenizer model type: "${raw.model.type}" (only BPE fast tokenizers are supported)`);
   }

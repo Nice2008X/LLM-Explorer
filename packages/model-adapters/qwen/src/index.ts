@@ -1,6 +1,6 @@
 import type { Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@llm-explorer/model-ir";
 import { SafetensorsWeightProvider } from "@llm-explorer/tensor-core";
-import { loadHfSafetensorsMetadata } from "@llm-explorer/hf-client";
+import { loadSafetensorsMetadata } from "@llm-explorer/hf-client";
 import { buildModelConfig, buildGraph, runInference, type LlamaFamilyRawConfig } from "@llm-explorer/adapter-llama-family";
 
 // Qwen2 (and Qwen2.5, which reuses the same architecture class and config
@@ -28,7 +28,7 @@ export const QwenAdapter: ModelAdapter = {
   },
 
   async loadMetadata(source: ModelSource): Promise<ModelMetadata> {
-    const { rawConfig, weightIndex, weightsBuffer } = await loadHfSafetensorsMetadata<LlamaFamilyRawConfig>(source);
+    const { rawConfig, weightIndex, weightsBuffer } = await loadSafetensorsMetadata<LlamaFamilyRawConfig>(source);
 
     return {
       architecture: (rawConfig.architectures && rawConfig.architectures[0]) || "Qwen2ForCausalLM",

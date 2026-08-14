@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { ModelLoader } from "./ModelLoader.js";
+import { ModelLoader, type LocalModelFiles } from "./ModelLoader.js";
 import { useTranslation } from "./LanguageContext.js";
 
 interface Props {
@@ -10,10 +10,11 @@ interface Props {
   /** The currently-loaded model's repo id, if any — passed straight through to ModelLoader so it's left out of the preset list. */
   excludeRepo?: string;
   onLoad: (repo: string) => void;
+  onLoadLocal: (files: LocalModelFiles) => void;
 }
 
 /** Popover version of ModelLoader for switching models mid-session — same input + preset chips as the first-load screen, minus the currently-loaded model, closing itself once a load is kicked off. Mirrors SettingsPanel's open/close-on-outside-click/Escape shape. */
-export function LoadModelPanel({ open, onClose, status, error, excludeRepo, onLoad }: Props) {
+export function LoadModelPanel({ open, onClose, status, error, excludeRepo, onLoad, onLoadLocal }: Props) {
   const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -50,6 +51,10 @@ export function LoadModelPanel({ open, onClose, status, error, excludeRepo, onLo
         embedded
         onLoad={(repo) => {
           onLoad(repo);
+          onClose();
+        }}
+        onLoadLocal={(files) => {
+          onLoadLocal(files);
           onClose();
         }}
       />

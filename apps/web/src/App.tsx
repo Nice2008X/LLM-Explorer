@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Tensor } from "@llm-explorer/model-ir";
+import type { Model, Tensor } from "@llm-explorer/model-ir";
 import { useModel } from "./useModel.js";
 import { useInference } from "./useInference.js";
 import { useLocalStorageState } from "./useLocalStorageState.js";
@@ -27,8 +27,28 @@ function computeActivationMagnitude(t: Tensor): number {
   return Math.sqrt(sum);
 }
 
+/** Triggers a browser "Save As" for one file's raw bytes — no server round-trip, just a Blob + an off-DOM `<a download>` click. */
+function downloadBytes(bytes: ArrayBuffer, filename: string) {
+  const url = URL.createObjectURL(new Blob([bytes]));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/** The transformer block that owns `nodeId` — itself if it is one, else the nearest ancestor — or null for a top-level node (embeddings, final norm, LM head, ...) that isn't inside any block. */
+function containingBlockId(model: Model, nodeId: string): string | null {
+  let cur: string | null = nodeId;
+  while (cur) {
+    if (model.nodes[cur].type === "transformer_block") return cur;
+    cur = model.nodes[cur].parentId ?? null;
+  }
+  return null;
+}
+
 export function App() {
-  const { state, load } = useModel();
+  const { state, load, loadLocalFiles } = useModel();
   const { theme, setTheme } = useTheme();
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -43,6 +63,7 @@ export function App() {
   const [treeCollapsed, setTreeCollapsed] = useLocalStorageState("panel:tree-collapsed", false);
   const [inspectorCollapsed, setInspectorCollapsed] = useLocalStorageState("panel:inspector-collapsed", false);
   const [bottomCollapsed, setBottomCollapsed] = useLocalStorageState("panel:bottom-collapsed", false);
+  const [predictionCollapsed, setPredictionCollapsed] = useLocalStorageState("panel:prediction-collapsed", false);
 
   const inference = useInference(state.model, state.weightProvider, state.adapter, state.tokenizer);
   const promptB = useInference(state.model, state.weightProvider, state.adapter, state.tokenizer);
@@ -77,7 +98,7 @@ export function App() {
           <SettingsButton open={settingsOpen} onToggle={() => setSettingsOpen((v) => !v)} />
           <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} theme={theme} onThemeChange={setTheme} />
         </div>
-        <ModelLoader status={state.status} error={state.error} onLoad={load} />
+        <ModelLoader status={state.status} error={state.error} onLoad={load} onLoadLocal={loadLocalFiles} />
       </div>
     );
   }
@@ -91,11 +112,15 @@ export function App() {
   const safeView: GraphView = view.kind === "block" && !model.nodes[view.blockId] ? { kind: "architecture" } : view;
 
   // Shared by the graph's double-click-to-expand gesture and the tree's
-  // mirrored double-click on a transformer block row — both should switch
-  // the graph to that block's detail view and select the block itself.
-  const enterBlock = (blockId: string) => {
-    setView({ kind: "block", blockId });
-    setSelectedId(blockId);
+  // double-click on any row: jump to whichever graph view actually contains
+  // this node (its own block's detail view, or back out to the top-level
+  // architecture view for a node — e.g. Logits — that isn't inside a block
+  // at all) and select it there, instead of only handling the
+  // transformer-block case and leaving other double-clicks a no-op.
+  const navigateToNode = (nodeId: string) => {
+    const blockId = containingBlockId(model, nodeId);
+    setView(blockId ? { kind: "block", blockId } : { kind: "architecture" });
+    setSelectedId(nodeId);
   };
 
   // A stale selectedTokenIndex from a previous, possibly-longer prompt would
@@ -105,17 +130,54 @@ export function App() {
   // result, matching "just ran, so show me the last position" intuition.
   const runPromptA = (prompt: string) => {
     setSelectedTokenIndex(null);
+    setPredictionCollapsed(false);
     inference.run(prompt);
   };
 
+  // Switching tabs while the bottom panel is collapsed should actually show
+  // the tab, not just change which one is "active" behind a collapsed strip
+  // — every place that jumps to a specific bottom tab (the tab bar itself,
+  // Inspector's quick actions, Prediction panel's "Why?" link) goes through
+  // this instead of setBottomTab directly.
+  const selectBottomTab = (tab: BottomTab) => {
+    setBottomTab(tab);
+    setBottomCollapsed(false);
+  };
+
   const requestTensorSource = (value: "weights" | "activations") => {
-    setBottomTab("tensor");
+    selectBottomTab("tensor");
     setTensorSourceRequest({ value, nonce: Date.now() });
   };
+
+  // Every file downloaded exactly as fetched/picked (state.rawFiles holds
+  // the original bytes, not anything re-serialized from the parsed/decoded
+  // in-memory model) — this is what lets the files saved here be loaded
+  // straight back in via "Local files" with no round-trip loss.
+  const saveModelToDisk = () => {
+    const safeName = model.name.replace(/[\\/:*?"<>|]+/g, "-");
+    if (state.rawFiles?.weightsBytes) downloadBytes(state.rawFiles.weightsBytes, `${safeName}.safetensors`);
+    if (state.rawFiles?.configBytes) downloadBytes(state.rawFiles.configBytes, `${safeName}.config.json`);
+    if (state.rawFiles?.tokenizerBytes) downloadBytes(state.rawFiles.tokenizerBytes, `${safeName}.tokenizer.json`);
+  };
+  const canSaveModel = !!state.rawFiles?.weightsBytes;
 
   const hasResult = inference.state.status === "ready" && !!inference.state.result;
   const analysisTabsEnabled = hasResult && !!state.adapter?.runInference;
   const currentRepo = state.source?.kind === "huggingface" ? state.source.repo : undefined;
+
+  // Derived, not a separate stored flag: "max frame" just means every
+  // surrounding panel is currently collapsed. The prediction panel only
+  // counts when it's actually rendered (a result exists) — otherwise its
+  // stored collapse preference shouldn't stop the other three panels from
+  // reading as "already maximized".
+  const isMaxFrame = treeCollapsed && inspectorCollapsed && bottomCollapsed && (!hasResult || predictionCollapsed);
+  const toggleMaxFrame = () => {
+    const next = !isMaxFrame;
+    setTreeCollapsed(next);
+    setInspectorCollapsed(next);
+    setBottomCollapsed(next);
+    setPredictionCollapsed(next);
+  };
 
   return (
     <div className={"app" + (analysisBusy ? " app-busy" : "")}>
@@ -132,7 +194,11 @@ export function App() {
             error={state.error}
             excludeRepo={currentRepo}
             onLoad={load}
+            onLoadLocal={loadLocalFiles}
           />
+          <button className="save-model" onClick={saveModelToDisk} disabled={!canSaveModel} title={t("app.saveModel")}>
+            {t("app.saveModel")}
+          </button>
         </div>
         <div className="control-group">
           <SettingsButton open={settingsOpen} onToggle={() => setSettingsOpen((v) => !v)} />
@@ -155,7 +221,9 @@ export function App() {
           result={inference.state.result!}
           tokenizer={state.tokenizer}
           selectedTokenIndex={selectedTokenIndex}
-          onViewWhy={() => setBottomTab("attribution")}
+          onViewWhy={() => selectBottomTab("attribution")}
+          collapsed={predictionCollapsed}
+          onToggleCollapsed={() => setPredictionCollapsed((v) => !v)}
         />
       )}
       <div className="app-body">
@@ -174,7 +242,7 @@ export function App() {
                 model={model}
                 selectedId={selectedId}
                 onSelect={setSelectedId}
-                onEnterBlock={enterBlock}
+                onNavigate={navigateToNode}
                 activationMagnitudeById={activationMagnitudeById}
               />
             </div>
@@ -186,8 +254,10 @@ export function App() {
             view={safeView}
             selectedId={selectedId}
             onSelect={setSelectedId}
-            onEnterBlock={enterBlock}
+            onEnterBlock={navigateToNode}
             onExitBlock={() => setView({ kind: "architecture" })}
+            isMaxFrame={isMaxFrame}
+            onToggleMaxFrame={toggleMaxFrame}
           />
         </main>
         <aside className={"pane pane-inspector" + (inspectorCollapsed ? " collapsed" : "")}>
@@ -214,16 +284,16 @@ export function App() {
       </div>
       <section className={"pane pane-tensor" + (bottomCollapsed ? " collapsed" : "")}>
         <div className="bottom-tabs">
-          <button className={bottomTab === "tensor" ? "active" : ""} onClick={() => setBottomTab("tensor")}>
+          <button className={bottomTab === "tensor" ? "active" : ""} onClick={() => selectBottomTab("tensor")}>
             {t("app.tensorExplorer")}
           </button>
-          <button className={bottomTab === "logitlens" ? "active" : ""} disabled={!analysisTabsEnabled} onClick={() => setBottomTab("logitlens")} title={!analysisTabsEnabled ? t("app.runForwardPassFirst") : undefined}>
+          <button className={bottomTab === "logitlens" ? "active" : ""} disabled={!analysisTabsEnabled} onClick={() => selectBottomTab("logitlens")} title={!analysisTabsEnabled ? t("app.runForwardPassFirst") : undefined}>
             {t("app.logitLens")}
           </button>
-          <button className={bottomTab === "attribution" ? "active" : ""} disabled={!analysisTabsEnabled} onClick={() => setBottomTab("attribution")} title={!analysisTabsEnabled ? t("app.runForwardPassFirst") : undefined}>
+          <button className={bottomTab === "attribution" ? "active" : ""} disabled={!analysisTabsEnabled} onClick={() => selectBottomTab("attribution")} title={!analysisTabsEnabled ? t("app.runForwardPassFirst") : undefined}>
             {t("app.tokenAttribution")}
           </button>
-          <button className={bottomTab === "experiment" ? "active" : ""} disabled={!analysisTabsEnabled} onClick={() => setBottomTab("experiment")} title={!analysisTabsEnabled ? t("app.runForwardPassFirst") : undefined}>
+          <button className={bottomTab === "experiment" ? "active" : ""} disabled={!analysisTabsEnabled} onClick={() => selectBottomTab("experiment")} title={!analysisTabsEnabled ? t("app.runForwardPassFirst") : undefined}>
             {t("app.experiment")}
           </button>
           <span className="bottom-tabs-spacer" />

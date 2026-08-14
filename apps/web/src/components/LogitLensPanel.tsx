@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Model, WeightProvider, ActivationCapture } from "@llm-explorer/model-ir";
 import { computeLogitLens, type LogitLensEntry } from "@llm-explorer/interpretability";
 import type { Tokenizer } from "@llm-explorer/tokenizer";
+import { formatPercent } from "../format.js";
 
 interface Props {
   model: Model;
@@ -71,9 +72,9 @@ export function LogitLensPanel({ model, weightProvider, capture, tokenizer, sele
               <div className="logit-lens-label">{layer.label}</div>
               <div className="logit-lens-bars">
                 {layer.topTokens.map((t, i) => (
-                  <div key={i} className="logit-lens-token" style={{ opacity: 0.4 + 0.6 * t.prob }} title={`${(t.prob * 100).toFixed(1)}%`}>
+                  <div key={i} className="logit-lens-token" style={{ opacity: 0.4 + 0.6 * t.prob }} title={formatPercent(t.prob)}>
                     <span className="logit-lens-token-text">{tokenizer.decodeToken(t.tokenId) || `#${t.tokenId}`}</span>
-                    <span className="logit-lens-token-prob">{(t.prob * 100).toFixed(1)}%</span>
+                    <span className="logit-lens-token-prob">{formatPercent(t.prob)}</span>
                   </div>
                 ))}
               </div>

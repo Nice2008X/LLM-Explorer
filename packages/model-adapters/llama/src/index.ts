@@ -1,6 +1,6 @@
 import type { Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@llm-explorer/model-ir";
 import { SafetensorsWeightProvider } from "@llm-explorer/tensor-core";
-import { loadHfSafetensorsMetadata } from "@llm-explorer/hf-client";
+import { loadSafetensorsMetadata } from "@llm-explorer/hf-client";
 import { buildModelConfig, buildGraph, runInference, type LlamaFamilyRawConfig } from "@llm-explorer/adapter-llama-family";
 
 const PROVIDER_ID = "llama-weights";
@@ -15,7 +15,7 @@ export const LlamaAdapter: ModelAdapter = {
   },
 
   async loadMetadata(source: ModelSource): Promise<ModelMetadata> {
-    const { rawConfig, weightIndex, weightsBuffer } = await loadHfSafetensorsMetadata<LlamaFamilyRawConfig>(source);
+    const { rawConfig, weightIndex, weightsBuffer } = await loadSafetensorsMetadata<LlamaFamilyRawConfig>(source);
 
     return {
       architecture: (rawConfig.architectures && rawConfig.architectures[0]) || "LlamaForCausalLM",

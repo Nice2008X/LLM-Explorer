@@ -1,5 +1,5 @@
 import type { Model, ModelConfig, ModelMetadata, ModelNode, NodeType, ParameterRef, TensorSlice } from "@llm-explorer/model-ir";
-import { numElements, dtypeSize } from "@llm-explorer/model-ir";
+import { numElements, dtypeSize, modelSourceLabel } from "@llm-explorer/model-ir";
 
 export interface GPT2RawConfig {
   model_type?: string;
@@ -258,8 +258,8 @@ export function buildGraph(metadata: ModelMetadata, providerId: string): Model {
   edge("lm_head", "output");
 
   return {
-    id: metadata.source.kind === "huggingface" ? metadata.source.repo : "model",
-    name: metadata.source.kind === "huggingface" ? metadata.source.repo : "model",
+    id: modelSourceLabel(metadata.source),
+    name: modelSourceLabel(metadata.source),
     architecture: metadata.architecture,
     config: cfg,
     inputs: nodes["input"].outputs,

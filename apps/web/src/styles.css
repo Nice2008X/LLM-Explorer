@@ -269,6 +269,55 @@ input, select { font-family: inherit; }
 /* Nested inside .load-model-panel, which already supplies its own card chrome (background/border/shadow) and header — strip this component's own so it doesn't render as a card-within-a-card. */
 .model-loader.embedded { width: auto; padding: 0; background: none; border: none; border-radius: 0; box-shadow: none; }
 
+.model-loader-source-tabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--border-hairline); }
+.model-loader-source-tabs button {
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 600;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+.model-loader-source-tabs button:hover { color: var(--text-primary); }
+.model-loader-source-tabs button.active { color: var(--accent-text); border-bottom-color: var(--accent); }
+
+.model-loader-local-form { display: flex; flex-direction: column; gap: 10px; }
+.model-loader-local-hint { color: var(--text-tertiary); font-size: 11px; margin: 0; }
+.model-loader-file-row { display: flex; flex-direction: column; gap: 4px; }
+.model-loader-file-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+.model-loader-file-desc { font-size: 11px; color: var(--text-tertiary); }
+.model-loader-file-row input[type="file"] {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 6px 0;
+}
+.model-loader-local-form > button {
+  align-self: flex-start;
+  padding: 10px 16px;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-weight: 600;
+  transition: background-color var(--transition-fast);
+}
+.model-loader-local-form > button:hover:not(:disabled) { background: var(--accent-hover); }
+.model-loader-local-form > button:disabled { opacity: 0.6; cursor: default; }
+
+.save-model {
+  background: var(--bg-chip);
+  border: 1px solid var(--border-default);
+  color: var(--accent-text);
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  transition: background-color var(--transition-fast);
+}
+.save-model:hover:not(:disabled) { background: var(--bg-hover); }
+.save-model:disabled { opacity: 0.5; cursor: default; }
+
 /* --- App shell --- */
 .app { height: 100%; position: relative; display: flex; flex-direction: column; }
 
@@ -488,7 +537,23 @@ input, select { font-family: inherit; }
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-hairline);
 }
-.prediction-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.prediction-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.prediction-collapse-btn {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text-tertiary);
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+.prediction-collapse-btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-default); }
 .prediction-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
 .prediction-position { font-size: 11px; color: var(--text-tertiary); font-family: ui-monospace, monospace; }
 .prediction-why-link {
@@ -710,6 +775,7 @@ input, select { font-family: inherit; }
   padding: 0;
 }
 .graph-breadcrumb button:hover { color: var(--accent-hover); }
+.control-maxframe-icon { font-size: 13px; line-height: 1; color: #333; }
 .ir-node {
   background: var(--bg-surface-alt);
   border: 2px solid var(--border-default);
