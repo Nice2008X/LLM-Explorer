@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Model, ModelNode } from "@llm-explorer/model-ir";
 
 interface Props {
@@ -7,6 +7,8 @@ interface Props {
   onSelect: (id: string) => void;
   /** Mirrors the architecture graph's double-click-to-expand gesture: double-clicking a transformer block row switches the graph to that block's detail view, not just selects it here. */
   onEnterBlock: (blockId: string) => void;
+  /** Per-node activation magnitude (L2 norm) from the last run — lets a user spot an unusually "loud" layer without opening every node. Undefined (or a node missing from it) means no run yet / no activation recorded for that node. */
+  activationMagnitudeById?: Record<string, number>;
 }
 
 /** Node ids open by default: the root and its immediate children — deep enough to orient a user, shallow enough that a many-layer model doesn't flood the tree with every transformer block (and its attention/FFN internals) expanded. */
@@ -31,8 +33,18 @@ function ancestorsOf(model: Model, nodeId: string | null): string[] {
   return ancestors;
 }
 
-export function ModelTree({ model, selectedId, onSelect, onEnterBlock }: Props) {
+export function ModelTree({ model, selectedId, onSelect, onEnterBlock, activationMagnitudeById }: Props) {
   const [openIds, setOpenIds] = useState<Set<string>>(() => defaultOpenIds(model));
+
+  // Node count is bounded by architecture size (dozens to a couple hundred
+  // rows even for a many-layer model) — never vocab-sized — so a plain loop
+  // here is just consistent caution, not a required safeguard the way it
+  // was for the earlier vocab-sized Math.max(...) bugs.
+  const maxMagnitude = useMemo(() => {
+    let max = 1e-9;
+    for (const v of Object.values(activationMagnitudeById ?? {})) if (v > max) max = v;
+    return max;
+  }, [activationMagnitudeById]);
 
   // A different model was loaded — node ids are reused across architectures
   // (every adapter names its root "model", its layer group "blocks", etc.),
@@ -85,6 +97,8 @@ export function ModelTree({ model, selectedId, onSelect, onEnterBlock }: Props) 
         onEnterBlock={onEnterBlock}
         openIds={openIds}
         onToggle={toggle}
+        activationMagnitudeById={activationMagnitudeById}
+        maxMagnitude={maxMagnitude}
       />
     </div>
   );
@@ -99,6 +113,8 @@ function TreeNode({
   onEnterBlock,
   openIds,
   onToggle,
+  activationMagnitudeById,
+  maxMagnitude,
 }: {
   model: Model;
   nodeId: string;
@@ -108,6 +124,8 @@ function TreeNode({
   onEnterBlock: (blockId: string) => void;
   openIds: Set<string>;
   onToggle: (nodeId: string) => void;
+  activationMagnitudeById?: Record<string, number>;
+  maxMagnitude: number;
 }) {
   const node: ModelNode = model.nodes[nodeId];
   const hasChildren = node.children.length > 0;
@@ -150,6 +168,11 @@ function TreeNode({
         )}
         <span className="tree-label">{node.name}</span>
         {node.parameters.length > 0 && <span className="tree-param-dot" title="has weights" />}
+        {activationMagnitudeById?.[nodeId] !== undefined && (
+          <span className="tree-activation-tick" title={`activation magnitude: ${activationMagnitudeById[nodeId].toFixed(4)}`}>
+            <span className="tree-activation-tick-fill" style={{ width: `${Math.min(100, (activationMagnitudeById[nodeId] / maxMagnitude) * 100)}%` }} />
+          </span>
+        )}
       </div>
       {hasChildren && open && (
         <div>
@@ -164,6 +187,8 @@ function TreeNode({
               onEnterBlock={onEnterBlock}
               openIds={openIds}
               onToggle={onToggle}
+              activationMagnitudeById={activationMagnitudeById}
+              maxMagnitude={maxMagnitude}
             />
           ))}
         </div>

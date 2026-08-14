@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { Tensor } from "@llm-explorer/model-ir";
 import { useModel } from "./useModel.js";
 import { useInference } from "./useInference.js";
 import { useLocalStorageState } from "./useLocalStorageState.js";
@@ -13,11 +14,18 @@ import { ArchitectureGraph, type GraphView } from "./components/ArchitectureGrap
 import { Inspector } from "./components/Inspector.js";
 import { TensorExplorer } from "./components/TensorExplorer.js";
 import { InferencePanel } from "./components/InferencePanel.js";
+import { PredictionPanel } from "./components/PredictionPanel.js";
 import { LogitLensPanel } from "./components/LogitLensPanel.js";
 import { TokenAttributionPanel } from "./components/TokenAttributionPanel.js";
 import { ExperimentPanel } from "./components/ExperimentPanel.js";
 
 type BottomTab = "tensor" | "logitlens" | "attribution" | "experiment";
+
+function computeActivationMagnitude(t: Tensor): number {
+  let sum = 0;
+  for (let i = 0; i < t.data.length; i++) sum += t.data[i] * t.data[i];
+  return Math.sqrt(sum);
+}
 
 export function App() {
   const { state, load } = useModel();
@@ -31,6 +39,7 @@ export function App() {
   const [compareEnabled, setCompareEnabled] = useState(false);
   const [bottomTab, setBottomTab] = useState<BottomTab>("tensor");
   const [analysisBusy, setAnalysisBusy] = useState(false);
+  const [tensorSourceRequest, setTensorSourceRequest] = useState<{ value: "weights" | "activations"; nonce: number } | null>(null);
   const [treeCollapsed, setTreeCollapsed] = useLocalStorageState("panel:tree-collapsed", false);
   const [inspectorCollapsed, setInspectorCollapsed] = useLocalStorageState("panel:inspector-collapsed", false);
   const [bottomCollapsed, setBottomCollapsed] = useLocalStorageState("panel:bottom-collapsed", false);
@@ -49,6 +58,17 @@ export function App() {
     inference.reset();
     promptB.reset();
   }, [state.model]);
+
+  // Per-node activation magnitude (L2 norm) from the last run — computed
+  // once here and shared by the model tree's per-row ticks and the
+  // Inspector's "This run" section, rather than each recomputing it.
+  const activationMagnitudeById = useMemo(() => {
+    const result = inference.state.result;
+    if (!result) return undefined;
+    const map: Record<string, number> = {};
+    for (const nodeId in result.activations) map[nodeId] = computeActivationMagnitude(result.activations[nodeId]);
+    return map;
+  }, [inference.state.result]);
 
   if (state.status !== "ready" || !state.model || !state.weightProvider) {
     return (
@@ -76,6 +96,21 @@ export function App() {
   const enterBlock = (blockId: string) => {
     setView({ kind: "block", blockId });
     setSelectedId(blockId);
+  };
+
+  // A stale selectedTokenIndex from a previous, possibly-longer prompt would
+  // otherwise silently point past the new run's token count (App only
+  // resets it on model change, not on every re-run) — clear it so every
+  // panel's `?? tokenIds.length - 1` default kicks in fresh for the new
+  // result, matching "just ran, so show me the last position" intuition.
+  const runPromptA = (prompt: string) => {
+    setSelectedTokenIndex(null);
+    inference.run(prompt);
+  };
+
+  const requestTensorSource = (value: "weights" | "activations") => {
+    setBottomTab("tensor");
+    setTensorSourceRequest({ value, nonce: Date.now() });
   };
 
   const hasResult = inference.state.status === "ready" && !!inference.state.result;
@@ -107,7 +142,7 @@ export function App() {
       <InferencePanel
         supported={!!state.tokenizer}
         state={inference.state}
-        onRun={inference.run}
+        onRun={runPromptA}
         selectedTokenIndex={selectedTokenIndex}
         onSelectToken={setSelectedTokenIndex}
         compareEnabled={compareEnabled}
@@ -115,6 +150,14 @@ export function App() {
         promptBState={promptB.state}
         onRunB={promptB.run}
       />
+      {hasResult && state.tokenizer && (
+        <PredictionPanel
+          result={inference.state.result!}
+          tokenizer={state.tokenizer}
+          selectedTokenIndex={selectedTokenIndex}
+          onViewWhy={() => setBottomTab("attribution")}
+        />
+      )}
       <div className="app-body">
         <aside className={"pane pane-tree" + (treeCollapsed ? " collapsed" : "")}>
           <div className="pane-header">
@@ -127,7 +170,13 @@ export function App() {
             <span className="pane-vertical-label">{t("app.modelTree")}</span>
           ) : (
             <div className="pane-tree-body">
-              <ModelTree model={model} selectedId={selectedId} onSelect={setSelectedId} onEnterBlock={enterBlock} />
+              <ModelTree
+                model={model}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onEnterBlock={enterBlock}
+                activationMagnitudeById={activationMagnitudeById}
+              />
             </div>
           )}
         </aside>
@@ -152,7 +201,13 @@ export function App() {
             <span className="pane-vertical-label">{t("app.inspector")}</span>
           ) : (
             <div className="pane-inspector-body">
-              <Inspector node={selectedNode} />
+              <Inspector
+                node={selectedNode}
+                activationShape={selectedId ? inference.state.result?.activations[selectedId]?.shape : undefined}
+                activationMagnitude={selectedId ? activationMagnitudeById?.[selectedId] : undefined}
+                onViewActivation={() => requestTensorSource("activations")}
+                onViewWeights={() => requestTensorSource("weights")}
+              />
             </div>
           )}
         </aside>
@@ -185,6 +240,7 @@ export function App() {
             inference={inference.state}
             selectedTokenIndex={selectedTokenIndex}
             promptBInference={promptB.state}
+            sourceRequest={tensorSourceRequest}
           />
         )}
         {!bottomCollapsed && bottomTab === "logitlens" && analysisTabsEnabled && state.tokenizer && (
@@ -193,6 +249,8 @@ export function App() {
             weightProvider={state.weightProvider}
             capture={inference.state.result!}
             tokenizer={state.tokenizer}
+            selectedTokenIndex={selectedTokenIndex}
+            onSelectToken={setSelectedTokenIndex}
             onBusyChange={setAnalysisBusy}
           />
         )}
@@ -203,6 +261,8 @@ export function App() {
             adapter={state.adapter!}
             tokenIds={inference.state.result!.tokenIds}
             tokenizer={state.tokenizer}
+            selectedTokenIndex={selectedTokenIndex}
+            onSelectNode={setSelectedId}
             onBusyChange={setAnalysisBusy}
           />
         )}

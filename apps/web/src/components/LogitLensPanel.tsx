@@ -8,12 +8,18 @@ interface Props {
   weightProvider: WeightProvider;
   capture: ActivationCapture;
   tokenizer: Tokenizer;
+  /** Shared with the rest of the app (prompt token chips, Prediction panel, Token Attribution) — clicking a token anywhere moves this same position, instead of each panel tracking its own. */
+  selectedTokenIndex: number | null;
+  onSelectToken: (i: number) => void;
   /** Reported whenever this panel's own background computation starts/stops — lets the app show a busy cursor while it runs. */
   onBusyChange?: (busy: boolean) => void;
 }
 
-export function LogitLensPanel({ model, weightProvider, capture, tokenizer, onBusyChange }: Props) {
-  const [tokenIndex, setTokenIndex] = useState(capture.tokenIds.length - 1);
+export function LogitLensPanel({ model, weightProvider, capture, tokenizer, selectedTokenIndex, onSelectToken, onBusyChange }: Props) {
+  // A stale selectedTokenIndex from a longer previous prompt (App only
+  // resets it on model change, not on every re-run) would otherwise index
+  // past this capture's logits.
+  const tokenIndex = Math.min(selectedTokenIndex ?? capture.tokenIds.length - 1, capture.tokenIds.length - 1);
   const [layers, setLayers] = useState<LogitLensEntry[] | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -44,7 +50,7 @@ export function LogitLensPanel({ model, weightProvider, capture, tokenizer, onBu
         </span>
         <div className="token-chips">
           {displayTokens.map((t, i) => (
-            <button key={i} className={"token-chip" + (i === tokenIndex ? " selected" : "")} onClick={() => setTokenIndex(i)}>
+            <button key={i} className={"token-chip" + (i === tokenIndex ? " selected" : "")} onClick={() => onSelectToken(i)}>
               {t.trim() === "" ? "·".repeat(Math.max(1, t.length)) : t}
             </button>
           ))}

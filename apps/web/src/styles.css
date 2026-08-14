@@ -481,6 +481,32 @@ input, select { font-family: inherit; }
 .token-chip.selected { background: var(--bg-active); border-color: var(--accent); color: var(--text-primary); }
 .token-chip-readonly { cursor: default; opacity: 0.75; }
 .token-chip-readonly:hover { background: var(--bg-chip); color: var(--text-secondary); }
+
+/* --- Prediction panel --- */
+.prediction-panel {
+  padding: 10px 16px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-hairline);
+}
+.prediction-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.prediction-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
+.prediction-position { font-size: 11px; color: var(--text-tertiary); font-family: ui-monospace, monospace; }
+.prediction-why-link {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 4px;
+}
+.prediction-why-link:hover { text-decoration: underline; }
+.prediction-rows { display: flex; flex-direction: column; gap: 4px; max-width: 480px; }
+.prediction-row { display: flex; align-items: center; gap: 8px; }
+.prediction-token { width: 90px; flex-shrink: 0; font-family: ui-monospace, monospace; font-size: 12px; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.prediction-bar-track { flex: 1; height: 12px; background: var(--bg-hover); border-radius: var(--radius-sm); overflow: hidden; }
+.prediction-bar-fill { height: 100%; background: var(--accent); border-radius: var(--radius-sm); }
+.prediction-pct { width: 48px; flex-shrink: 0; text-align: right; font-family: ui-monospace, monospace; font-size: 11px; color: var(--text-tertiary); }
 .compare-toggle {
   background: none;
   border: 1px solid var(--border-default);
@@ -647,6 +673,16 @@ input, select { font-family: inherit; }
   margin-left: 4px;
   flex-shrink: 0;
 }
+.tree-activation-tick {
+  width: 36px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--bg-hover);
+  margin-left: 6px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.tree-activation-tick-fill { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
 
 /* --- Architecture graph --- */
 .architecture-graph { position: relative; height: 100%; }
@@ -713,6 +749,17 @@ input, select { font-family: inherit; }
   margin-bottom: 6px;
 }
 .inspector-section p { margin: 0; line-height: 1.5; color: var(--text-secondary); }
+.inspector-actions { display: flex; gap: 8px; margin-bottom: 16px; }
+.inspector-actions button {
+  background: var(--bg-chip);
+  border: 1px solid var(--border-default);
+  color: var(--accent-text);
+  padding: 5px 10px;
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  transition: background-color var(--transition-fast);
+}
+.inspector-actions button:hover { background: var(--bg-hover); }
 .formula {
   display: block;
   background: var(--bg-canvas);
@@ -940,6 +987,21 @@ input, select { font-family: inherit; }
 .attribution-positive { left: 50%; background: var(--accent); }
 .attribution-negative { right: 50%; background: var(--danger-strong); }
 .attribution-value { width: 70px; flex-shrink: 0; font-family: ui-monospace, monospace; font-size: 10px; color: var(--text-tertiary); }
+.attribution-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); margin: 18px 0 8px; }
+.attribution-section-title:first-of-type { margin-top: 0; }
+.attribution-truncated-note { text-transform: none; font-weight: 400; letter-spacing: normal; color: var(--text-tertiary); }
+.attribution-row-clickable {
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.attribution-row-clickable:hover { background: var(--bg-hover); }
+.attribution-row-clickable .attribution-token { width: 230px; text-align: left; }
 
 /* --- Experiment panel --- */
 .experiment-panel { padding: 16px; overflow-y: auto; flex: 1; min-height: 0; }

@@ -15,6 +15,8 @@ interface Props {
   inference?: InferenceState;
   selectedTokenIndex: number | null;
   promptBInference?: InferenceState;
+  /** A one-shot request to switch the Weights/Activations source tab — e.g. from the Inspector's "View activation"/"View weights" quick actions. Bump `nonce` on every request so a repeat click of the same source still re-applies (a user may have since clicked to a different tab themselves). */
+  sourceRequest?: { value: "weights" | "activations"; nonce: number } | null;
 }
 
 interface ParamEntry {
@@ -42,7 +44,7 @@ function formatBytes(n: number): string {
   return `${n} B`;
 }
 
-export function TensorExplorer({ model, weightProvider, selectedNode, inference, selectedTokenIndex, promptBInference }: Props) {
+export function TensorExplorer({ model, weightProvider, selectedNode, inference, selectedTokenIndex, promptBInference, sourceRequest }: Props) {
   const allParams = useMemo<ParamEntry[]>(() => {
     const list: ParamEntry[] = [];
     for (const node of Object.values(model.nodes)) {
@@ -64,6 +66,13 @@ export function TensorExplorer({ model, weightProvider, selectedNode, inference,
   useEffect(() => {
     if (inference?.status === "ready") setSource("activations");
   }, [inference?.result]);
+
+  // Explicit request from outside (Inspector's quick actions) — keyed on
+  // `nonce` rather than `value` so clicking the same source again (after the
+  // user has since switched tabs themselves) still re-applies it.
+  useEffect(() => {
+    if (sourceRequest) setSource(sourceRequest.value);
+  }, [sourceRequest?.nonce]);
 
   useEffect(() => {
     if (selectedNode && selectedNode.parameters.length > 0) {

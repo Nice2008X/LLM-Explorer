@@ -47,6 +47,10 @@ const en = {
   "inference.comparePromptB": "+ Compare with another prompt",
   "inference.noTokenizer": "This model has no tokenizer.json this app can read, so inference/activation inspection isn't available — you can still explore its architecture and weights above.",
 
+  "prediction.title": "Next token prediction",
+  "prediction.position": "position {n}",
+  "prediction.why": "Why? →",
+
   "settings.title": "Settings",
   "settings.theme": "Theme",
   "settings.language": "Language",
@@ -98,6 +102,10 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "inference.comparePromptB": "+ 与另一个提示词对比",
     "inference.noTokenizer": "此模型没有本应用可解析的 tokenizer.json，因此无法进行推理/激活检查——你仍可以在上方浏览其结构和权重。",
 
+    "prediction.title": "下一个词元预测",
+    "prediction.position": "位置 {n}",
+    "prediction.why": "为什么？→",
+
     "settings.title": "设置",
     "settings.theme": "主题",
     "settings.language": "语言",
@@ -143,6 +151,10 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "inference.hidePromptB": "− Ocultar prompt B",
     "inference.comparePromptB": "+ Comparar con otro prompt",
     "inference.noTokenizer": "Este modelo no tiene un tokenizer.json que esta app pueda leer, así que la inferencia/inspección de activaciones no está disponible; aún puedes explorar su arquitectura y pesos arriba.",
+
+    "prediction.title": "Predicción del siguiente token",
+    "prediction.position": "posición {n}",
+    "prediction.why": "¿Por qué? →",
 
     "settings.title": "Configuración",
     "settings.theme": "Tema",
@@ -190,6 +202,10 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "inference.comparePromptB": "+ Comparer avec un autre prompt",
     "inference.noTokenizer": "Ce modèle n'a pas de tokenizer.json lisible par cette application, l'inférence/inspection des activations n'est donc pas disponible — vous pouvez toujours explorer son architecture et ses poids ci-dessus.",
 
+    "prediction.title": "Prédiction du prochain token",
+    "prediction.position": "position {n}",
+    "prediction.why": "Pourquoi ? →",
+
     "settings.title": "Paramètres",
     "settings.theme": "Thème",
     "settings.language": "Langue",
@@ -235,6 +251,10 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "inference.hidePromptB": "− Prompt B ausblenden",
     "inference.comparePromptB": "+ Mit einem weiteren Prompt vergleichen",
     "inference.noTokenizer": "Dieses Modell hat keine tokenizer.json, die diese App lesen kann, daher ist Inferenz/Aktivierungs-Inspektion nicht verfügbar — du kannst oben aber weiterhin Architektur und Gewichte erkunden.",
+
+    "prediction.title": "Vorhersage des nächsten Tokens",
+    "prediction.position": "Position {n}",
+    "prediction.why": "Warum? →",
 
     "settings.title": "Einstellungen",
     "settings.theme": "Design",
@@ -282,6 +302,10 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "inference.comparePromptB": "+ 別のプロンプトと比較",
     "inference.noTokenizer": "このモデルにはこのアプリが読み取れる tokenizer.json がないため、推論・活性化の検査は利用できません — 上部でアーキテクチャと重みを引き続き閲覧できます。",
 
+    "prediction.title": "次のトークンの予測",
+    "prediction.position": "位置 {n}",
+    "prediction.why": "なぜ？→",
+
     "settings.title": "設定",
     "settings.theme": "テーマ",
     "settings.language": "言語",
@@ -327,6 +351,10 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "inference.hidePromptB": "− 프롬프트 B 숨기기",
     "inference.comparePromptB": "+ 다른 프롬프트와 비교",
     "inference.noTokenizer": "이 모델에는 이 앱이 읽을 수 있는 tokenizer.json이 없어 추론/활성화 검사를 사용할 수 없습니다 — 위에서 구조와 가중치는 계속 살펴볼 수 있습니다.",
+
+    "prediction.title": "다음 토큰 예측",
+    "prediction.position": "위치 {n}",
+    "prediction.why": "왜? →",
 
     "settings.title": "설정",
     "settings.theme": "테마",
@@ -374,6 +402,10 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "inference.comparePromptB": "+ Comparar com outro prompt",
     "inference.noTokenizer": "Este modelo não tem um tokenizer.json que este app consiga ler, então inferência/inspeção de ativações não está disponível — você ainda pode explorar sua arquitetura e pesos acima.",
 
+    "prediction.title": "Previsão do próximo token",
+    "prediction.position": "posição {n}",
+    "prediction.why": "Por quê? →",
+
     "settings.title": "Configurações",
     "settings.theme": "Tema",
     "settings.language": "Idioma",
@@ -419,6 +451,10 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "inference.hidePromptB": "− Скрыть промпт B",
     "inference.comparePromptB": "+ Сравнить с другим промптом",
     "inference.noTokenizer": "У этой модели нет tokenizer.json, который может прочитать это приложение, поэтому инференс/проверка активаций недоступны — но вы всё ещё можете изучить её архитектуру и веса выше.",
+
+    "prediction.title": "Предсказание следующего токена",
+    "prediction.position": "позиция {n}",
+    "prediction.why": "Почему? →",
 
     "settings.title": "Настройки",
     "settings.theme": "Тема",

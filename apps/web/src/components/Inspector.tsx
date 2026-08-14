@@ -6,7 +6,16 @@ function formatDims(dims: Array<number | string>): string {
   return `[${dims.join(", ")}]`;
 }
 
-export function Inspector({ node }: { node: ModelNode | null }) {
+interface Props {
+  node: ModelNode | null;
+  /** The selected node's real captured activation shape/magnitude from the last run — undefined when no run has happened yet, or this node has no recorded activation (e.g. a purely organizational container). */
+  activationShape?: number[];
+  activationMagnitude?: number;
+  onViewActivation?: () => void;
+  onViewWeights?: () => void;
+}
+
+export function Inspector({ node, activationShape, activationMagnitude, onViewActivation, onViewWeights }: Props) {
   if (!node) {
     return (
       <div className="inspector">
@@ -17,6 +26,7 @@ export function Inspector({ node }: { node: ModelNode | null }) {
 
   const info = componentRegistry[node.type];
   const totalParams = node.parameters.reduce((a, p) => a + (p.slice ? p.logicalShape.reduce((x, y) => x * y, 1) : p.numElements), 0);
+  const hasThisRun = activationShape !== undefined && activationMagnitude !== undefined;
 
   return (
     <div className="inspector">
@@ -30,6 +40,34 @@ export function Inspector({ node }: { node: ModelNode | null }) {
       <Section title="What is it?">
         <p>{info.description}</p>
       </Section>
+
+      {hasThisRun && (
+        <Section title="This run">
+          <div className="io-row">
+            <span className="io-label">activation shape</span>
+            <span className="io-shape">{formatDims(activationShape!)}</span>
+          </div>
+          <div className="io-row">
+            <span className="io-label">magnitude (L2 norm)</span>
+            <span className="io-shape">{activationMagnitude!.toFixed(4)}</span>
+          </div>
+        </Section>
+      )}
+
+      {(hasThisRun || node.parameters.length > 0) && (
+        <div className="inspector-actions">
+          {hasThisRun && onViewActivation && (
+            <button type="button" onClick={onViewActivation}>
+              View activation
+            </button>
+          )}
+          {node.parameters.length > 0 && onViewWeights && (
+            <button type="button" onClick={onViewWeights}>
+              View weights
+            </button>
+          )}
+        </div>
+      )}
 
       {info.formula && (
         <Section title="Show me the math">
