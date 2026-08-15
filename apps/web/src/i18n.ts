@@ -62,6 +62,8 @@ const en = {
   "prediction.why": "Why? →",
   "graph.maximizeGraph": "Maximize graph view",
   "graph.restorePanels": "Restore panels",
+  "graph.showTensorShapes": "Show tensor shapes",
+  "graph.hideTensorShapes": "Hide tensor shapes",
 
   "settings.title": "Settings",
   "settings.theme": "Theme",
@@ -129,6 +131,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "prediction.why": "为什么？→",
     "graph.maximizeGraph": "最大化图表视图",
     "graph.restorePanels": "恢复面板",
+    "graph.showTensorShapes": "显示张量形状",
+    "graph.hideTensorShapes": "隐藏张量形状",
 
     "settings.title": "设置",
     "settings.theme": "主题",
@@ -191,6 +195,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "prediction.why": "¿Por qué? →",
     "graph.maximizeGraph": "Maximizar vista del gráfico",
     "graph.restorePanels": "Restaurar paneles",
+    "graph.showTensorShapes": "Mostrar formas de tensor",
+    "graph.hideTensorShapes": "Ocultar formas de tensor",
 
     "settings.title": "Configuración",
     "settings.theme": "Tema",
@@ -253,6 +259,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "prediction.why": "Pourquoi ? →",
     "graph.maximizeGraph": "Agrandir la vue du graphe",
     "graph.restorePanels": "Restaurer les panneaux",
+    "graph.showTensorShapes": "Afficher les formes de tenseur",
+    "graph.hideTensorShapes": "Masquer les formes de tenseur",
 
     "settings.title": "Paramètres",
     "settings.theme": "Thème",
@@ -315,6 +323,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "prediction.why": "Warum? →",
     "graph.maximizeGraph": "Diagrammansicht maximieren",
     "graph.restorePanels": "Bedienfelder wiederherstellen",
+    "graph.showTensorShapes": "Tensor-Formen anzeigen",
+    "graph.hideTensorShapes": "Tensor-Formen ausblenden",
 
     "settings.title": "Einstellungen",
     "settings.theme": "Design",
@@ -377,6 +387,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "prediction.why": "なぜ？→",
     "graph.maximizeGraph": "グラフ表示を最大化",
     "graph.restorePanels": "パネルを復元",
+    "graph.showTensorShapes": "テンソル形状を表示",
+    "graph.hideTensorShapes": "テンソル形状を非表示",
 
     "settings.title": "設定",
     "settings.theme": "テーマ",
@@ -439,6 +451,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "prediction.why": "왜? →",
     "graph.maximizeGraph": "그래프 보기 최대화",
     "graph.restorePanels": "패널 복원",
+    "graph.showTensorShapes": "텐서 형태 표시",
+    "graph.hideTensorShapes": "텐서 형태 숨기기",
 
     "settings.title": "설정",
     "settings.theme": "테마",
@@ -501,6 +515,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "prediction.why": "Por quê? →",
     "graph.maximizeGraph": "Maximizar visualização do gráfico",
     "graph.restorePanels": "Restaurar painéis",
+    "graph.showTensorShapes": "Mostrar formas de tensor",
+    "graph.hideTensorShapes": "Ocultar formas de tensor",
 
     "settings.title": "Configurações",
     "settings.theme": "Tema",
@@ -563,6 +579,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "prediction.why": "Почему? →",
     "graph.maximizeGraph": "Развернуть граф на весь экран",
     "graph.restorePanels": "Восстановить панели",
+    "graph.showTensorShapes": "Показать форму тензора",
+    "graph.hideTensorShapes": "Скрыть форму тензора",
 
     "settings.title": "Настройки",
     "settings.theme": "Тема",

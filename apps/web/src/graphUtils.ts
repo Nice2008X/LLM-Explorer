@@ -38,6 +38,10 @@ function findVisibleAncestor(model: Model, nodeId: string, visible: Set<string>)
  * ancestor. This is what makes level-1 (collapsed blocks) and level-2
  * (one block's internals) both renderable from the same underlying edge
  * list, with no per-architecture special-casing.
+ *
+ * `label` is carried through (e.g. adapters tag every residual connection
+ * `"skip"`) so callers can style/route data-flow vs. residual edges
+ * differently instead of every edge looking the same.
  */
 export function collapseEdges(model: Model, visibleIds: string[]): ModelEdge[] {
   const visible = new Set(visibleIds);
@@ -50,7 +54,7 @@ export function collapseEdges(model: Model, visibleIds: string[]): ModelEdge[] {
     const key = `${s}->${t}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    result.push({ id: key, source: s, target: t });
+    result.push({ id: key, source: s, target: t, label: e.label });
   }
   return result;
 }
@@ -99,8 +103,60 @@ export function buildLevel1Graph(model: Model, showAllBlocks: boolean, maxEdgeBl
 
 export { ELLIPSIS };
 
-/** The block-detail view: every computation step inside one transformer block. */
+const BLOCK_INPUT = "__block_input__";
+
+/**
+ * The block-detail view: every computation step inside one transformer
+ * block. Every adapter emits two edges sourced at the block's own id —
+ * `edge(block, firstNorm)` (the main data-flow entry) and
+ * `edge(block, residualAdd, "skip")` (the residual entry, carried around
+ * attention/FFN) — representing "the block's input, from outside". These
+ * need `blockId` added to the visible set to resolve at all (their source,
+ * the block itself, is neither a leaf nor an ancestor of one), and get
+ * remapped to a synthetic `BLOCK_INPUT` marker so they render as a real
+ * "Block Input" box instead of reusing the block's own (misleadingly
+ * "expandable") node.
+ *
+ * That can't be done by simply adding `blockId` to `collapseEdges`'s
+ * visible set, though: some adapters also emit purely-organizational edges
+ * sourced at a *hidden container* one level down (e.g. GPT-2's
+ * `edge(ffnContainer, fc)`, kept only so the level-1 collapsed-block view
+ * has a path through the container) — bubbled through `findVisibleAncestor`
+ * once `blockId` is visible, a container with no other visible ancestor
+ * resolves to `blockId` too, and gets misread as a genuine block-input edge.
+ * The result: a bogus `Block Input -> Linear (expand)` edge that renders as
+ * a plain (non-"skip") smoothstep line running nearly straight down through
+ * every node in between, indistinguishable from a real connection. The
+ * container's edge is redundant anyway — adapters already emit an explicit
+ * leaf-to-leaf edge for the same case (`edge(ln2, fc)` alongside
+ * `edge(ffn, fc)`) — so it's fine for it to simply be dropped instead.
+ *
+ * The fix: resolve the general edge set against the leaves only (never
+ * `blockId`), and handle the two real block-input edges as a separate pass
+ * that only looks at edges whose source is *exactly* `blockId` in the raw
+ * model, before any ancestor-walking — so a hidden container can never be
+ * mistaken for the block's own boundary.
+ */
 export function buildLevel2Graph(model: Model, blockId: string): { nodeIds: string[]; edges: ModelEdge[] } {
-  const nodeIds = getLeafDescendants(model, blockId);
-  return { nodeIds, edges: collapseEdges(model, nodeIds) };
+  const leafIds = getLeafDescendants(model, blockId);
+  const leafSet = new Set(leafIds);
+  const edges = collapseEdges(model, leafIds);
+
+  let usesBlockInput = false;
+  const seen = new Set(edges.map((e) => e.id));
+  for (const e of model.edges) {
+    if (e.source !== blockId) continue;
+    const t = findVisibleAncestor(model, e.target, leafSet);
+    if (!t) continue;
+    const id = `${BLOCK_INPUT}->${t}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    usesBlockInput = true;
+    edges.push({ id, source: BLOCK_INPUT, target: t, label: e.label });
+  }
+
+  const nodeIds = usesBlockInput ? [BLOCK_INPUT, ...leafIds] : leafIds;
+  return { nodeIds, edges };
 }
+
+export { BLOCK_INPUT };

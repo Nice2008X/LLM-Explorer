@@ -5,8 +5,11 @@ export interface LayoutPosition {
   y: number;
 }
 
-const COL_WIDTH = 220;
-const ROW_HEIGHT = 130;
+const CHAIN_COL_WIDTH = 220;
+const BRANCH_COL_WIDTH = 240;
+const CHAIN_ROW_HEIGHT = 120;
+/** Extra vertical room wherever a rank fans out to (or in from) more than one node — gives the junction dot and offset ports space to read clearly instead of being cramped against the next rank. */
+const BRANCH_ROW_HEIGHT = 170;
 
 /**
  * Minimal layered ("Sugiyama-style") layout: rank nodes by longest path from
@@ -43,13 +46,27 @@ export function layeredLayout(nodeIds: string[], edges: ModelEdge[]): Map<string
     if (!byRank.has(r)) byRank.set(r, []);
     byRank.get(r)!.push(id);
   }
+  const maxRank = Math.max(0, ...byRank.keys());
+
+  // Cumulative y per rank rather than a fixed `r * ROW_HEIGHT` — the gap
+  // leading into or out of any rank with more than one node (a branch or a
+  // merge) gets extra room; a plain chain segment stays compact.
+  const rankY = new Map<number, number>();
+  rankY.set(0, 0);
+  for (let r = 1; r <= maxRank; r++) {
+    const prevBranches = (byRank.get(r - 1)?.length ?? 1) > 1;
+    const thisBranches = (byRank.get(r)?.length ?? 1) > 1;
+    const gap = prevBranches || thisBranches ? BRANCH_ROW_HEIGHT : CHAIN_ROW_HEIGHT;
+    rankY.set(r, (rankY.get(r - 1) ?? 0) + gap);
+  }
 
   const positions = new Map<string, LayoutPosition>();
   for (const [r, ids] of byRank) {
     const n = ids.length;
+    const colWidth = n > 1 ? BRANCH_COL_WIDTH : CHAIN_COL_WIDTH;
     ids.forEach((id, i) => {
-      const x = (i - (n - 1) / 2) * COL_WIDTH;
-      positions.set(id, { x, y: r * ROW_HEIGHT });
+      const x = (i - (n - 1) / 2) * colWidth;
+      positions.set(id, { x, y: rankY.get(r) ?? r * CHAIN_ROW_HEIGHT });
     });
   }
   return positions;

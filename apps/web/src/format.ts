@@ -13,3 +13,11 @@ export function formatPercent(fraction: number): string {
   if (abs >= 0.0001) return `${pct.toFixed(4)}%`;
   return `${pct.toPrecision(1)}%`;
 }
+
+/** Compact parameter/element count, e.g. 1234567 -> "1.23M". */
+export function formatCount(n: number): string {
+  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return String(n);
+}
