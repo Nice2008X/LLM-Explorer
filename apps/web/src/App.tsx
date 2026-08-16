@@ -8,6 +8,7 @@ import { useTranslation } from "./components/LanguageContext.js";
 import { SettingsButton, SettingsPanel } from "./components/SettingsPanel.js";
 import { ModelLoader } from "./components/ModelLoader.js";
 import { LoadModelPanel } from "./components/LoadModelPanel.js";
+import { SaveModelDialog, type SaveModelFile } from "./components/SaveModelDialog.js";
 import { ModelInfoBar } from "./components/ModelInfoBar.js";
 import { ModelTree } from "./components/ModelTree.js";
 import { ArchitectureGraph, type GraphView } from "./components/ArchitectureGraph.js";
@@ -73,6 +74,7 @@ export function App() {
   const [bottomHeight, setBottomHeight] = useLocalStorageState("panel:bottom-height", BOTTOM_PANEL_DEFAULT_HEIGHT);
   const [resizingBottom, setResizingBottom] = useState(false);
   const [predictionCollapsed, setPredictionCollapsed] = useLocalStorageState("panel:prediction-collapsed", false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
   const inference = useInference(state.model, state.weightProvider, state.adapter, state.tokenizer);
   const promptB = useInference(state.model, state.weightProvider, state.adapter, state.tokenizer);
@@ -168,13 +170,19 @@ export function App() {
   // the original bytes, not anything re-serialized from the parsed/decoded
   // in-memory model) — this is what lets the files saved here be loaded
   // straight back in via "Local files" with no round-trip loss.
-  const saveModelToDisk = () => {
-    const safeName = model.name.replace(/[\\/:*?"<>|]+/g, "-");
-    if (state.rawFiles?.weightsBytes) downloadBytes(state.rawFiles.weightsBytes, `${safeName}.safetensors`);
-    if (state.rawFiles?.configBytes) downloadBytes(state.rawFiles.configBytes, `${safeName}.config.json`);
-    if (state.rawFiles?.tokenizerBytes) downloadBytes(state.rawFiles.tokenizerBytes, `${safeName}.tokenizer.json`);
-  };
+  const safeModelName = model.name.replace(/[\\/:*?"<>|]+/g, "-");
+  const saveModelFiles: SaveModelFile[] = [
+    state.rawFiles?.weightsBytes && { filename: `${safeModelName}.safetensors`, bytes: state.rawFiles.weightsBytes.byteLength },
+    state.rawFiles?.configBytes && { filename: `${safeModelName}.config.json`, bytes: state.rawFiles.configBytes.byteLength },
+    state.rawFiles?.tokenizerBytes && { filename: `${safeModelName}.tokenizer.json`, bytes: state.rawFiles.tokenizerBytes.byteLength },
+  ].filter((f): f is SaveModelFile => !!f);
   const canSaveModel = !!state.rawFiles?.weightsBytes;
+  const confirmSaveModel = () => {
+    if (state.rawFiles?.weightsBytes) downloadBytes(state.rawFiles.weightsBytes, `${safeModelName}.safetensors`);
+    if (state.rawFiles?.configBytes) downloadBytes(state.rawFiles.configBytes, `${safeModelName}.config.json`);
+    if (state.rawFiles?.tokenizerBytes) downloadBytes(state.rawFiles.tokenizerBytes, `${safeModelName}.tokenizer.json`);
+    setSaveDialogOpen(false);
+  };
 
   const hasResult = inference.state.status === "ready" && !!inference.state.result;
   const hasResultB = compareEnabled && promptB.state.status === "ready" && !!promptB.state.result;
@@ -235,9 +243,10 @@ export function App() {
             onLoad={load}
             onLoadLocal={loadLocalFiles}
           />
-          <button className="save-model" onClick={saveModelToDisk} disabled={!canSaveModel} title={t("app.saveModel")}>
+          <button className="save-model" onClick={() => setSaveDialogOpen(true)} disabled={!canSaveModel} title={t("app.saveModel")}>
             {t("app.saveModel")}
           </button>
+          <SaveModelDialog open={saveDialogOpen} files={saveModelFiles} onCancel={() => setSaveDialogOpen(false)} onConfirm={confirmSaveModel} />
         </div>
         <div className="control-group">
           <SettingsButton open={settingsOpen} onToggle={() => setSettingsOpen((v) => !v)} />

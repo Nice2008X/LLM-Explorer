@@ -19,11 +19,22 @@ cache and always come straight from Hugging Face instead.
 
 ![Screenshot of the LLM Architecture Explorer: the model tree, a transformer block's Attention internals with a scope box grouping its Q/K/V/Output projections, the Inspector panel showing an Input Construction breakdown, and the Tensor Explorer's activation heatmap](docs/screenshot.png)
 
+Note: the built-in presets are tiny, randomly-initialized test checkpoints,
+not real trained models — predictions won't be coherent. This tool is for
+exploring architecture and mechanics, not model quality.
+
 ## Features
 
 - **Load any compatible Hugging Face model** by repo id — no upload, no
   server-side processing. Eight architecture families are supported out
   of the box (see [Supported architectures](#supported-architectures)).
+  Alternatively, pick a local `config.json` + `.safetensors` (+ optional
+  `tokenizer.json`) straight off disk — each file is content-sniffed
+  before loading (not just trusted by extension) to catch a mislabeled or
+  corrupt file immediately, with a size warning for very large weight
+  files. A **Save model** button downloads the loaded model's exact
+  original bytes back out, behind a confirmation dialog that names every
+  file and its size before anything downloads.
 - **Architecture graph** — the model rendered as a node graph (via React
   Flow) at two levels of detail: the full architecture, and a
   double-click-to-expand view of a single transformer block's internal
@@ -31,7 +42,9 @@ cache and always come straight from Hugging Face instead.
   container node (e.g. Attention) draws a scope box around its leaf
   components; a graph control can collapse repeated same-type chains
   (e.g. 5 transformer blocks) into a single stacked node for a more
-  condensed view, and toggle back to the expanded chain on demand.
+  condensed view, and toggle back to the expanded chain on demand. A
+  built-in export button renders the full graph (not just the visible
+  viewport) to a PNG.
 - **Model tree** — a classic collapsible tree view of every module and
   parameter, alongside the graph.
 - **Inspector** — click any component for a plain-language explanation of
@@ -56,6 +69,10 @@ cache and always come straight from Hugging Face instead.
 - **Themes and language** — dark, light, pastel, and sepia themes, plus a
   UI translated into nine languages, both configurable from the settings
   panel (top-right gear icon).
+- **Resizable, collapsible layout** — drag the bottom panel's top edge to
+  resize it (within sane min/max bounds); it and the tree/inspector/
+  prediction panels each collapse independently, and every size/collapse
+  preference persists across reloads.
 
 ## How it works
 

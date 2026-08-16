@@ -21,6 +21,7 @@
     "@llm-explorer/model-ir": "*",
     "@llm-explorer/tensor-core": "*",
     "@llm-explorer/tokenizer": "*",
+    "html-to-image": "^1.11.13",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "reactflow": "^11.11.4"

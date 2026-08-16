@@ -222,7 +222,8 @@ input, select { font-family: inherit; }
   box-shadow: var(--shadow-elevated);
 }
 .model-loader-title { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
-.model-loader-sub { color: var(--text-secondary); margin-bottom: 20px; line-height: 1.5; }
+.model-loader-sub { color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5; }
+.model-loader-limitation { color: var(--text-tertiary); font-size: 12px; line-height: 1.5; margin-bottom: 20px; }
 .model-loader-form { display: flex; gap: 8px; }
 .model-loader-form input {
   flex: 1;
@@ -293,6 +294,11 @@ input, select { font-family: inherit; }
   color: var(--text-secondary);
   padding: 6px 0;
 }
+.model-loader-file-status { font-size: 11px; }
+.model-loader-file-status.checking { color: var(--text-tertiary); }
+.model-loader-file-status.ok { color: var(--success); }
+.model-loader-file-status.warning { color: var(--warning); }
+.model-loader-file-status.error { color: var(--danger); }
 .model-loader-local-form > button {
   align-self: flex-start;
   padding: 10px 16px;
@@ -376,6 +382,94 @@ input, select { font-family: inherit; }
   border-radius: var(--radius-sm);
 }
 .load-model-panel-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+/* --- Save model confirmation dialog --- */
+.save-model-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.save-model-dialog {
+  width: 420px;
+  max-width: calc(100vw - 32px);
+  padding: 16px;
+  background: var(--bg-surface-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-elevated);
+}
+.save-model-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.save-model-dialog-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+.save-model-dialog-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+.save-model-dialog-desc { font-size: 12px; color: var(--text-secondary); margin: 0 0 10px; }
+.save-model-dialog-files {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.save-model-dialog-files li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.save-model-dialog-files li + li { border-top: 1px solid var(--border-hairline); }
+.save-model-dialog-filename { font-family: ui-monospace, monospace; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.save-model-dialog-filesize { flex-shrink: 0; color: var(--text-tertiary); }
+.save-model-dialog-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+  padding: 0 2px;
+}
+.save-model-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.save-model-dialog-cancel,
+.save-model-dialog-confirm {
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+.save-model-dialog-cancel {
+  background: none;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+}
+.save-model-dialog-cancel:hover { background: var(--bg-hover); border-color: var(--border-strong); }
+.save-model-dialog-confirm {
+  background: var(--accent);
+  border: none;
+  color: white;
+}
+.save-model-dialog-confirm:hover { background: var(--accent-hover); }
 
 /* --- Settings button + panel --- */
 .settings-toggle-btn {
@@ -815,6 +909,7 @@ input, select { font-family: inherit; }
    ahead of each one after the first keeps them visually separate rather
    than reading as one fused block. */
 .react-flow__controls-button.control-button-gap { margin-top: 8px; }
+.control-icon-spin { animation: spin 0.9s linear infinite; }
 .ir-node {
   background: var(--bg-surface-alt);
   border: 2px solid var(--border-default);

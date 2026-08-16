@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { PRESET_MODELS } from "../adapters.js";
 import { useTranslation } from "./LanguageContext.js";
+import { checkJsonFile, checkWeightsFile, type FileCheck } from "../localFileValidation.js";
+import { formatBytes } from "../format.js";
 
 export interface LocalModelFiles {
   name: string;
@@ -27,6 +29,22 @@ function defaultModelName(filename: string): string {
   return filename.replace(/\.safetensors$/i, "");
 }
 
+interface Validation {
+  checking: boolean;
+  check: FileCheck | null;
+}
+const IDLE_VALIDATION: Validation = { checking: false, check: null };
+
+/** Inline feedback under a file input: a "checking…" state while content-sniffing runs, then the validator's error/warning, or a plain size confirmation once a file passes. Content is sniffed (not just the file extension) so a mislabeled or corrupt file is caught here instead of failing deep inside the model adapter later. */
+function FileRowStatus({ file, validation }: { file: File | null; validation: Validation }) {
+  if (!file) return null;
+  if (validation.checking) return <span className="model-loader-file-status checking">Checking file…</span>;
+  if (validation.check?.error) return <span className="model-loader-file-status error">{validation.check.error}</span>;
+  if (validation.check?.warning) return <span className="model-loader-file-status warning">{validation.check.warning}</span>;
+  if (validation.check?.ok) return <span className="model-loader-file-status ok">{formatBytes(file.size)}</span>;
+  return null;
+}
+
 export function ModelLoader({ status, error, onLoad, onLoadLocal, excludeRepo, embedded }: Props) {
   const { t } = useTranslation();
   const sortedPresets = useMemo(
@@ -38,8 +56,43 @@ export function ModelLoader({ status, error, onLoad, onLoadLocal, excludeRepo, e
   const [configFile, setConfigFile] = useState<File | null>(null);
   const [weightsFile, setWeightsFile] = useState<File | null>(null);
   const [tokenizerFile, setTokenizerFile] = useState<File | null>(null);
+  const [configValidation, setConfigValidation] = useState<Validation>(IDLE_VALIDATION);
+  const [weightsValidation, setWeightsValidation] = useState<Validation>(IDLE_VALIDATION);
+  const [tokenizerValidation, setTokenizerValidation] = useState<Validation>(IDLE_VALIDATION);
+  // Guards against a stale validation result clobbering state if the user
+  // swaps a file again before the previous (async, content-sniffing) check
+  // finishes — only the result matching the most recent pick for that field
+  // is applied.
+  const configNonce = useRef(0);
+  const weightsNonce = useRef(0);
+  const tokenizerNonce = useRef(0);
 
-  const canLoadLocal = !!configFile && !!weightsFile && status !== "loading";
+  function pickFile(
+    file: File | null,
+    setFile: (f: File | null) => void,
+    setValidation: (v: Validation) => void,
+    nonceRef: { current: number },
+    validate: (f: File) => Promise<FileCheck>
+  ) {
+    setFile(file);
+    const nonce = ++nonceRef.current;
+    if (!file) {
+      setValidation(IDLE_VALIDATION);
+      return;
+    }
+    setValidation({ checking: true, check: null });
+    validate(file).then((check) => {
+      if (nonceRef.current === nonce) setValidation({ checking: false, check });
+    });
+  }
+
+  const canLoadLocal =
+    !!configFile &&
+    configValidation.check?.ok === true &&
+    !!weightsFile &&
+    weightsValidation.check?.ok === true &&
+    (!tokenizerFile || tokenizerValidation.check?.ok === true) &&
+    status !== "loading";
 
   return (
     <div className={"model-loader" + (embedded ? " embedded" : "")}>
@@ -47,6 +100,7 @@ export function ModelLoader({ status, error, onLoad, onLoadLocal, excludeRepo, e
         <>
           <div className="model-loader-title">{t("loader.title")}</div>
           <div className="model-loader-sub">{t("loader.subtitle")}</div>
+          <div className="model-loader-limitation">{t("loader.limitationNote")}</div>
         </>
       )}
       <div className="model-loader-source-tabs">
@@ -92,7 +146,7 @@ export function ModelLoader({ status, error, onLoad, onLoadLocal, excludeRepo, e
           className="model-loader-local-form"
           onSubmit={(e) => {
             e.preventDefault();
-            if (!configFile || !weightsFile) return;
+            if (!canLoadLocal || !configFile || !weightsFile) return;
             onLoadLocal({ name: defaultModelName(weightsFile.name), config: configFile, weights: weightsFile, tokenizer: tokenizerFile ?? undefined });
           }}
         >
@@ -100,17 +154,32 @@ export function ModelLoader({ status, error, onLoad, onLoadLocal, excludeRepo, e
           <label className="model-loader-file-row">
             <span className="model-loader-file-label">{t("loader.localConfig")}</span>
             <span className="model-loader-file-desc">{t("loader.localConfigDesc")}</span>
-            <input type="file" accept=".json" onChange={(e) => setConfigFile(e.target.files?.[0] ?? null)} />
+            <input
+              type="file"
+              accept=".json"
+              onChange={(e) => pickFile(e.target.files?.[0] ?? null, setConfigFile, setConfigValidation, configNonce, checkJsonFile)}
+            />
+            <FileRowStatus file={configFile} validation={configValidation} />
           </label>
           <label className="model-loader-file-row">
             <span className="model-loader-file-label">{t("loader.localWeights")}</span>
             <span className="model-loader-file-desc">{t("loader.localWeightsDesc")}</span>
-            <input type="file" accept=".safetensors" onChange={(e) => setWeightsFile(e.target.files?.[0] ?? null)} />
+            <input
+              type="file"
+              accept=".safetensors"
+              onChange={(e) => pickFile(e.target.files?.[0] ?? null, setWeightsFile, setWeightsValidation, weightsNonce, checkWeightsFile)}
+            />
+            <FileRowStatus file={weightsFile} validation={weightsValidation} />
           </label>
           <label className="model-loader-file-row">
             <span className="model-loader-file-label">{t("loader.localTokenizer")}</span>
             <span className="model-loader-file-desc">{t("loader.localTokenizerDesc")}</span>
-            <input type="file" accept=".json" onChange={(e) => setTokenizerFile(e.target.files?.[0] ?? null)} />
+            <input
+              type="file"
+              accept=".json"
+              onChange={(e) => pickFile(e.target.files?.[0] ?? null, setTokenizerFile, setTokenizerValidation, tokenizerNonce, checkJsonFile)}
+            />
+            <FileRowStatus file={tokenizerFile} validation={tokenizerValidation} />
           </label>
           <button type="submit" disabled={!canLoadLocal}>
             {status === "loading" ? t("loader.loading") : t("loader.load")}

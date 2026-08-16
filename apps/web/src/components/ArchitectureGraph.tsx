@@ -4,6 +4,8 @@ import ReactFlow, {
   BaseEdge,
   ControlButton,
   Controls,
+  getNodesBounds,
+  getViewportForBounds,
   Handle,
   MarkerType,
   MiniMap,
@@ -14,6 +16,7 @@ import ReactFlow, {
   type ReactFlowInstance,
 } from "reactflow";
 import "reactflow/dist/style.css";
+import { toPng } from "html-to-image";
 import type { Model, ModelEdge, ModelNode } from "@llm-explorer/model-ir";
 import { categoryGlyph, categoryLabel, componentRegistry } from "../registry.js";
 import { layeredLayout } from "../layout.js";
@@ -209,6 +212,23 @@ function StackIcon({ active }: { active: boolean }) {
   );
 }
 
+/** Downward arrow into a tray — standard "export/download" glyph, spinning while an export is in flight. */
+function ExportIcon({ busy }: { busy: boolean }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" className={busy ? "control-icon-spin" : undefined}>
+      {busy ? (
+        <path d="M12 7A5 5 0 1 1 9.5 2.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      ) : (
+        <>
+          <path d="M7 1.5v7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          <path d="M4 5.8 7 8.8l3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M2 10v1.5a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 const nodeTypes = { ir: IRNodeComponent, junction: JunctionDot, scope: ScopeBox };
 const edgeTypes = { lane: ResidualLaneEdge, detour: DetourEdge };
 
@@ -240,6 +260,7 @@ export function ArchitectureGraph({ model, view, selectedId, onSelect, onEnterBl
   // not something that should silently hide blocks the user expects to see
   // every time they open a model.
   const [stackRepeats, setStackRepeats] = useLocalStorageState("panel:graph-stack-repeats", false);
+  const [exportingImage, setExportingImage] = useState(false);
 
   const { nodeIds: rawNodeIds, edgeList: rawEdgeList } = useMemo(() => {
     if (view.kind === "architecture") {
@@ -765,6 +786,63 @@ export function ArchitectureGraph({ model, view, selectedId, onSelect, onEnterBl
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onSelect]);
 
+  // Exports exactly what's currently drawn — every node's real position,
+  // not just the on-screen viewport — by framing a fresh camera around all
+  // node bounds (getNodesBounds + getViewportForBounds, the pattern React
+  // Flow's own docs use for image export) and rendering only
+  // `.react-flow__viewport` (nodes/edges), leaving out Controls/MiniMap.
+  // html-to-image clones the DOM before applying that camera, so the live
+  // graph on screen is never touched.
+  const exportImage = useCallback(() => {
+    const instance = rfInstanceRef.current;
+    const viewportEl = containerRef.current?.querySelector<HTMLElement>(".react-flow__viewport");
+    if (!instance || !viewportEl || exportingImage) return;
+
+    const nodesBounds = getNodesBounds(instance.getNodes());
+    const aspect = nodesBounds.width / Math.max(1, nodesBounds.height);
+    const MAX_DIMENSION = 2400;
+    const MIN_DIMENSION = 800;
+    let imageWidth = Math.min(MAX_DIMENSION, Math.max(MIN_DIMENSION, Math.round(nodesBounds.width)));
+    let imageHeight = Math.round(imageWidth / Math.max(aspect, 0.01));
+    if (imageHeight > MAX_DIMENSION) {
+      imageHeight = MAX_DIMENSION;
+      imageWidth = Math.round(imageHeight * aspect);
+    }
+    const viewport = getViewportForBounds(nodesBounds, imageWidth, imageHeight, 0.1, 4, 0.1);
+    const backgroundColor = getComputedStyle(document.documentElement).getPropertyValue("--bg-canvas").trim() || "#0b0d13";
+    const viewLabel = view.kind === "block" ? (model.nodes[view.blockId]?.name ?? view.blockId) : "architecture";
+    const filename = `${model.name}-${viewLabel}`.trim().replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, "_") + ".png";
+
+    // A React re-render triggered here — even one that touches only the
+    // sibling Controls button, nothing inside `.react-flow__viewport` —
+    // reliably corrupts html-to-image's in-flight clone into a blank
+    // image (root-caused empirically; html-to-image cloning races the
+    // commit). Deferring the busy-state update past the current
+    // microtask queue via setTimeout keeps the capture's DOM read clear
+    // of any React commit.
+    setTimeout(() => setExportingImage(true), 0);
+    toPng(viewportEl, {
+      backgroundColor,
+      width: imageWidth,
+      height: imageHeight,
+      style: {
+        width: `${imageWidth}px`,
+        height: `${imageHeight}px`,
+        transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+      },
+    })
+      .then((dataUrl) => {
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = filename;
+        a.click();
+      })
+      .catch((err) => {
+        console.error("Failed to export graph image:", err);
+      })
+      .finally(() => setExportingImage(false));
+  }, [model, view, exportingImage]);
+
   return (
     <div className="architecture-graph" ref={containerRef}>
       {view.kind === "block" && (
@@ -814,6 +892,11 @@ export function ArchitectureGraph({ model, view, selectedId, onSelect, onEnterBl
           >
             <span className={"control-icon" + (stackRepeats ? " active" : "")}>
               <StackIcon active={stackRepeats} />
+            </span>
+          </ControlButton>
+          <ControlButton className="control-button-gap" onClick={exportImage} disabled={exportingImage} title={t("graph.exportImage")}>
+            <span className="control-icon">
+              <ExportIcon busy={exportingImage} />
             </span>
           </ControlButton>
         </Controls>
