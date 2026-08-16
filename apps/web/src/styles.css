@@ -619,10 +619,32 @@ input, select { font-family: inherit; }
   overflow: hidden;
   transition: height var(--transition-panel);
 }
+.pane-tensor.resizing { transition: none; }
 
 .pane-tree.collapsed { width: 36px; }
 .pane-inspector.collapsed { width: 36px; }
 .pane-tensor.collapsed { height: 40px; }
+
+/* --- Bottom panel drag-to-resize handle --- */
+.pane-tensor-resize-handle {
+  height: 6px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  position: relative;
+}
+.pane-tensor-resize-handle::after {
+  content: "";
+  position: absolute;
+  inset: 2px 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  transition: background-color var(--transition-fast);
+}
+.pane-tensor-resize-handle:hover::after,
+.pane-tensor.resizing .pane-tensor-resize-handle::after {
+  background: var(--accent);
+}
+.app-resizing-panel { cursor: row-resize; user-select: none; }
 
 /* --- Pane header + collapse control (shared by tree / inspector) --- */
 .pane-header {

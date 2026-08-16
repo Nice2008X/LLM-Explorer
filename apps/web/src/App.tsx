@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
 import type { Model, Tensor } from "@llm-explorer/model-ir";
 import { useModel } from "./useModel.js";
 import { useInference } from "./useInference.js";
@@ -20,6 +20,11 @@ import { TokenAttributionPanel } from "./components/TokenAttributionPanel.js";
 import { ExperimentPanel } from "./components/ExperimentPanel.js";
 
 type BottomTab = "tensor" | "logitlens" | "attribution" | "experiment";
+
+const BOTTOM_PANEL_DEFAULT_HEIGHT = 360;
+const BOTTOM_PANEL_MIN_HEIGHT = 160;
+/** Leaves at least this much vertical space for the tree/graph/inspector row above, however tall the window is. */
+const BOTTOM_PANEL_TOP_RESERVE = 240;
 
 function computeActivationMagnitude(t: Tensor): number {
   let sum = 0;
@@ -65,6 +70,8 @@ export function App() {
   const [treeCollapsed, setTreeCollapsed] = useLocalStorageState("panel:tree-collapsed", false);
   const [inspectorCollapsed, setInspectorCollapsed] = useLocalStorageState("panel:inspector-collapsed", false);
   const [bottomCollapsed, setBottomCollapsed] = useLocalStorageState("panel:bottom-collapsed", false);
+  const [bottomHeight, setBottomHeight] = useLocalStorageState("panel:bottom-height", BOTTOM_PANEL_DEFAULT_HEIGHT);
+  const [resizingBottom, setResizingBottom] = useState(false);
   const [predictionCollapsed, setPredictionCollapsed] = useLocalStorageState("panel:prediction-collapsed", false);
 
   const inference = useInference(state.model, state.weightProvider, state.adapter, state.tokenizer);
@@ -188,8 +195,31 @@ export function App() {
     setPredictionCollapsed(next);
   };
 
+  // Drag-to-resize for the bottom panel. Height is tracked in state (not
+  // just read from the DOM after drag) so it can be persisted; the max
+  // clamp is computed live off window.innerHeight rather than a fixed
+  // constant so it stays sane across window resizes.
+  const handleBottomResizeStart = (e: ReactMouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startHeight = bottomHeight;
+    setResizingBottom(true);
+    const onMove = (moveEvent: MouseEvent) => {
+      const maxHeight = Math.max(BOTTOM_PANEL_MIN_HEIGHT, window.innerHeight - BOTTOM_PANEL_TOP_RESERVE);
+      const next = startHeight + (startY - moveEvent.clientY);
+      setBottomHeight(Math.min(maxHeight, Math.max(BOTTOM_PANEL_MIN_HEIGHT, Math.round(next))));
+    };
+    const onUp = () => {
+      setResizingBottom(false);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
   return (
-    <div className={"app" + (analysisBusy ? " app-busy" : "")}>
+    <div className={"app" + (analysisBusy ? " app-busy" : "") + (resizingBottom ? " app-resizing-panel" : "")}>
       <ModelInfoBar model={model} />
       <div className="top-right-controls">
         <div className="control-group">
@@ -306,7 +336,17 @@ export function App() {
           )}
         </aside>
       </div>
-      <section className={"pane pane-tensor" + (bottomCollapsed ? " collapsed" : "")}>
+      <section
+        className={"pane pane-tensor" + (bottomCollapsed ? " collapsed" : "") + (resizingBottom ? " resizing" : "")}
+        style={bottomCollapsed ? undefined : { height: bottomHeight }}
+      >
+        {!bottomCollapsed && (
+          <div
+            className="pane-tensor-resize-handle"
+            onMouseDown={handleBottomResizeStart}
+            title={t("app.resizePanel")}
+          />
+        )}
         <div className="bottom-tabs">
           <button className={bottomTab === "tensor" ? "active" : ""} onClick={() => selectBottomTab("tensor")}>
             {t("app.tensorExplorer")}

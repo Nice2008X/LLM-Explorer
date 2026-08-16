@@ -17,7 +17,7 @@ written in TypeScript. Fetched files are cached in the browser's IndexedDB
 network round trip at all — files over 50 MB are never written to that
 cache and always come straight from Hugging Face instead.
 
-![Screenshot of the LLM Architecture Explorer: the model tree, an architecture graph with a selected transformer block, its Inspector panel, and a Logit Lens view of next-token predictions sharpening layer by layer](docs/screenshot.png)
+![Screenshot of the LLM Architecture Explorer: the model tree, a transformer block's Attention internals with a scope box grouping its Q/K/V/Output projections, the Inspector panel showing an Input Construction breakdown, and the Tensor Explorer's activation heatmap](docs/screenshot.png)
 
 ## Features
 
@@ -27,11 +27,18 @@ cache and always come straight from Hugging Face instead.
 - **Architecture graph** — the model rendered as a node graph (via React
   Flow) at two levels of detail: the full architecture, and a
   double-click-to-expand view of a single transformer block's internal
-  wiring (attention projections, norms, MLP, residual adds).
+  wiring (attention projections, norms, MLP, residual adds). Selecting a
+  container node (e.g. Attention) draws a scope box around its leaf
+  components; a graph control can collapse repeated same-type chains
+  (e.g. 5 transformer blocks) into a single stacked node for a more
+  condensed view, and toggle back to the expanded chain on demand.
 - **Model tree** — a classic collapsible tree view of every module and
   parameter, alongside the graph.
 - **Inspector** — click any component for a plain-language explanation of
-  what it does, its input/output shapes, and its parameters.
+  what it does, its input/output shapes, its parameters, and (where it can
+  be determined unambiguously) an Input Construction breakdown showing the
+  math behind how its input was assembled (e.g. token embedding +
+  positional embedding).
 - **Tensor Explorer** — browse every weight tensor and every activation
   captured from the last forward pass, rendered as a heatmap, a raw
   matrix, or a value histogram. Supports windowing into large tensors and
@@ -208,7 +215,7 @@ npm run typecheck
 ### Run with Docker
 
 No Node.js install needed — this builds the static production bundle in
-a `node:20-alpine` stage and serves it with `nginx:alpine`:
+a `node:22-alpine` stage and serves it with `nginx:alpine`:
 
 ```bash
 docker build -t llm-explorer .
@@ -228,7 +235,9 @@ it's just a file server.
    wiring, and use the breadcrumb to step back out.
 3. **Run a forward pass** — type a prompt and click *Run Forward Pass* to
    populate activations throughout the graph. Add a second prompt via *+
-   Compare with another prompt* to unlock A/B/diff views.
+   Compare with another prompt* to unlock A/B/diff views — Prompt B gets
+   its own next-token prediction panel, and a source toggle inside Logit
+   Lens and Token Attribution switches between analyzing Prompt A or B.
 4. **Analyze** — switch between the four bottom tabs:
    - **Tensor Explorer** for raw weights/activations,
    - **Logit Lens** for the evolving next-token prediction,

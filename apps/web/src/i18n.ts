@@ -28,6 +28,7 @@ const en = {
   "app.expandInspector": "Expand inspector",
   "app.collapsePanel": "Collapse panel",
   "app.expandPanel": "Expand panel",
+  "app.resizePanel": "Drag to resize",
   "app.saveModel": "Save model",
 
   "loader.title": "LLM Architecture Explorer",
@@ -99,6 +100,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "app.expandInspector": "展开检查器",
     "app.collapsePanel": "收起面板",
     "app.expandPanel": "展开面板",
+    "app.resizePanel": "拖动以调整大小",
     "app.saveModel": "保存模型",
 
     "loader.title": "LLM 架构浏览器",
@@ -165,6 +167,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "app.expandInspector": "Expandir inspector",
     "app.collapsePanel": "Contraer panel",
     "app.expandPanel": "Expandir panel",
+    "app.resizePanel": "Arrastra para redimensionar",
     "app.saveModel": "Guardar modelo",
 
     "loader.title": "Explorador de arquitectura LLM",
@@ -231,6 +234,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "app.expandInspector": "Développer l'inspecteur",
     "app.collapsePanel": "Réduire le panneau",
     "app.expandPanel": "Développer le panneau",
+    "app.resizePanel": "Glisser pour redimensionner",
     "app.saveModel": "Enregistrer le modèle",
 
     "loader.title": "Explorateur d'architecture LLM",
@@ -297,6 +301,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "app.expandInspector": "Inspektor ausklappen",
     "app.collapsePanel": "Panel einklappen",
     "app.expandPanel": "Panel ausklappen",
+    "app.resizePanel": "Ziehen zum Größe ändern",
     "app.saveModel": "Modell speichern",
 
     "loader.title": "LLM-Architektur-Explorer",
@@ -363,6 +368,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "app.expandInspector": "インスペクターを展開する",
     "app.collapsePanel": "パネルを折りたたむ",
     "app.expandPanel": "パネルを展開する",
+    "app.resizePanel": "ドラッグしてサイズ変更",
     "app.saveModel": "モデルを保存",
 
     "loader.title": "LLM アーキテクチャエクスプローラー",
@@ -429,6 +435,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "app.expandInspector": "인스펙터 펼치기",
     "app.collapsePanel": "패널 접기",
     "app.expandPanel": "패널 펼치기",
+    "app.resizePanel": "드래그하여 크기 조정",
     "app.saveModel": "모델 저장",
 
     "loader.title": "LLM 아키텍처 탐색기",
@@ -495,6 +502,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "app.expandInspector": "Expandir inspetor",
     "app.collapsePanel": "Recolher painel",
     "app.expandPanel": "Expandir painel",
+    "app.resizePanel": "Arraste para redimensionar",
     "app.saveModel": "Salvar modelo",
 
     "loader.title": "Explorador de arquitetura LLM",
@@ -561,6 +569,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "app.expandInspector": "Развернуть инспектор",
     "app.collapsePanel": "Свернуть панель",
     "app.expandPanel": "Развернуть панель",
+    "app.resizePanel": "Перетащите, чтобы изменить размер",
     "app.saveModel": "Сохранить модель",
 
     "loader.title": "Обозреватель архитектуры LLM",
