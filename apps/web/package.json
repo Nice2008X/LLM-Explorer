@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@llm-explorer/adapter-gemma": "*",
+    "@llm-explorer/adapter-glm4": "*",
     "@llm-explorer/adapter-gpt2": "*",
     "@llm-explorer/adapter-llama": "*",
     "@llm-explorer/adapter-mistral": "*",
