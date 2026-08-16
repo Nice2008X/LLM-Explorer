@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "LLM Architecture Explorer"
+abstract: >-
+  An interactive, in-browser explorer and debugger for large language model
+  internals. Loads a Hugging Face model's real config and safetensors
+  weights, renders its architecture as a navigable graph, runs an actual
+  forward pass client-side (no backend, no GPU), and supports tensor
+  inspection, logit-lens analysis, token attribution, and causal
+  interventions.
+type: software
+authors:
+  - name: "Nice2008X"
+    email: aixu2008nice@gmail.com
+repository-code: "https://github.com/Nice2008X/LLM-Explorer"
+license: MIT
+version: 0.1.0
+date-released: "2026-08-16"

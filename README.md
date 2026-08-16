@@ -198,7 +198,7 @@ layers), rather than just another adapter.
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 22.12+ (see `.nvmrc`)
 - npm (this is an npm-workspaces monorepo)
 
 ### Install
