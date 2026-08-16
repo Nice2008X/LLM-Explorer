@@ -12,6 +12,8 @@ interface Props {
   /** Lifted to App so the "maximize graph" control can collapse/expand this panel together with the tree/inspector/bottom panels, not just this panel's own toggle. */
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  /** Set when this panel is one of a side-by-side pair (Prompt A / Prompt B) — shown as a small tag next to the title so the two are distinguishable. Omitted in the single-prompt case, where there's nothing to disambiguate. */
+  promptLabel?: string;
 }
 
 /**
@@ -20,7 +22,7 @@ interface Props {
  * ExperimentPanel's before/after comparison) so this needs no new
  * computation, just a place to show it without digging into a bottom tab.
  */
-export function PredictionPanel({ result, tokenizer, selectedTokenIndex, onViewWhy, collapsed, onToggleCollapsed }: Props) {
+export function PredictionPanel({ result, tokenizer, selectedTokenIndex, onViewWhy, collapsed, onToggleCollapsed, promptLabel }: Props) {
   const { t } = useTranslation();
   // A stale selectedTokenIndex from a longer previous prompt (App only
   // resets it on model change, not on every re-run) would otherwise index
@@ -41,6 +43,7 @@ export function PredictionPanel({ result, tokenizer, selectedTokenIndex, onViewW
           {collapsed ? "▸" : "▾"}
         </button>
         <span className="prediction-title">{t("prediction.title")}</span>
+        {promptLabel && <span className="prediction-prompt-tag">{promptLabel}</span>}
         <span className="prediction-position">{t("prediction.position").replace("{n}", String(tokenIndex))}</span>
         <button type="button" className="prediction-why-link" onClick={onViewWhy}>
           {t("prediction.why")}

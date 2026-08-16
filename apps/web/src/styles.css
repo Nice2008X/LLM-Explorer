@@ -532,12 +532,23 @@ input, select { font-family: inherit; }
 .token-chip-readonly:hover { background: var(--bg-chip); color: var(--text-secondary); }
 
 /* --- Prediction panel --- */
+.prediction-panels-row { display: flex; align-items: stretch; flex-wrap: wrap; }
+.prediction-panels-row .prediction-panel { flex: 1 1 0; min-width: 280px; }
+.prediction-panels-row .prediction-panel + .prediction-panel { border-left: 1px solid var(--border-hairline); }
 .prediction-panel {
   padding: 10px 16px;
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-hairline);
 }
 .prediction-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.prediction-prompt-tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  background: var(--bg-hover);
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+}
 .prediction-collapse-btn {
   background: none;
   border: 1px solid transparent;
@@ -777,6 +788,11 @@ input, select { font-family: inherit; }
 .graph-breadcrumb button:hover { color: var(--accent-hover); }
 .control-icon { display: inline-flex; align-items: center; justify-content: center; font-size: 13px; line-height: 1; color: #333; font-family: ui-monospace, monospace; }
 .control-icon.active { color: #2563eb; font-weight: 700; }
+/* Our custom toggle buttons default to sitting flush against each other
+   (React Flow's own button styling has no built-in gap) — a small margin
+   ahead of each one after the first keeps them visually separate rather
+   than reading as one fused block. */
+.react-flow__controls-button.control-button-gap { margin-top: 8px; }
 .ir-node {
   background: var(--bg-surface-alt);
   border: 2px solid var(--border-default);
@@ -794,8 +810,42 @@ input, select { font-family: inherit; }
 .ir-node-sub { font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
 .ir-node-dims { font-size: 10px; color: var(--text-tertiary); font-family: ui-monospace, monospace; margin-top: 2px; }
 .ir-node-hint { font-size: 9px; color: var(--text-faint); margin-top: 4px; font-style: italic; }
+.ir-node-stack-badge { margin-left: 5px; font-weight: 700; opacity: 0.8; }
+.ir-node-stack-outer { position: relative; }
+.ir-node-stack-layer {
+  position: absolute;
+  inset: 0;
+  border: 2px solid;
+  border-radius: 8px;
+  background: var(--bg-surface-alt);
+}
+.ir-node-stack-layer-1 { transform: translate(6px, 6px); z-index: -1; opacity: 0.65; }
+.ir-node-stack-layer-2 { transform: translate(12px, 12px); z-index: -2; opacity: 0.35; }
 
 .graph-junction-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-tertiary); }
+
+.graph-scope-box {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border: 2px dashed;
+  border-radius: 18px;
+  position: relative;
+  pointer-events: none;
+}
+.graph-scope-label {
+  position: absolute;
+  top: -10px;
+  left: 16px;
+  background: var(--bg-canvas);
+  border: 1px solid;
+  border-radius: var(--radius-sm);
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
 
 .react-flow__edge.graph-edge-dimmed { opacity: 0.2; }
 .react-flow__edge-label { font-size: 9px; fill: var(--text-tertiary); font-family: ui-monospace, monospace; }
@@ -848,6 +898,7 @@ input, select { font-family: inherit; }
   color: var(--accent-soft-text);
   white-space: pre-wrap;
 }
+.input-source-list { margin: 4px 0 0; padding-left: 18px; font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
 .io-row {
   display: flex;
   justify-content: space-between;

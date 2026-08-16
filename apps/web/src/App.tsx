@@ -60,6 +60,8 @@ export function App() {
   const [bottomTab, setBottomTab] = useState<BottomTab>("tensor");
   const [analysisBusy, setAnalysisBusy] = useState(false);
   const [tensorSourceRequest, setTensorSourceRequest] = useState<{ value: "weights" | "activations"; nonce: number } | null>(null);
+  /** Which prompt's tokens Token Attribution attributes — controlled here (rather than as the panel's own local state) so the Prediction panel's "Why?" link can request the matching side instead of always landing back on Prompt A. */
+  const [attributionSource, setAttributionSource] = useState<"A" | "B">("A");
   const [treeCollapsed, setTreeCollapsed] = useLocalStorageState("panel:tree-collapsed", false);
   const [inspectorCollapsed, setInspectorCollapsed] = useLocalStorageState("panel:inspector-collapsed", false);
   const [bottomCollapsed, setBottomCollapsed] = useLocalStorageState("panel:bottom-collapsed", false);
@@ -76,6 +78,7 @@ export function App() {
     setView({ kind: "architecture" });
     setSelectedTokenIndex(null);
     setBottomTab("tensor");
+    setAttributionSource("A");
     inference.reset();
     promptB.reset();
   }, [state.model]);
@@ -149,6 +152,11 @@ export function App() {
     setTensorSourceRequest({ value, nonce: Date.now() });
   };
 
+  const viewWhy = (source: "A" | "B") => {
+    setAttributionSource(source);
+    selectBottomTab("attribution");
+  };
+
   // Every file downloaded exactly as fetched/picked (state.rawFiles holds
   // the original bytes, not anything re-serialized from the parsed/decoded
   // in-memory model) — this is what lets the files saved here be loaded
@@ -162,6 +170,7 @@ export function App() {
   const canSaveModel = !!state.rawFiles?.weightsBytes;
 
   const hasResult = inference.state.status === "ready" && !!inference.state.result;
+  const hasResultB = compareEnabled && promptB.state.status === "ready" && !!promptB.state.result;
   const analysisTabsEnabled = hasResult && !!state.adapter?.runInference;
   const currentRepo = state.source?.kind === "huggingface" ? state.source.repo : undefined;
 
@@ -217,14 +226,28 @@ export function App() {
         onRunB={promptB.run}
       />
       {hasResult && state.tokenizer && (
-        <PredictionPanel
-          result={inference.state.result!}
-          tokenizer={state.tokenizer}
-          selectedTokenIndex={selectedTokenIndex}
-          onViewWhy={() => selectBottomTab("attribution")}
-          collapsed={predictionCollapsed}
-          onToggleCollapsed={() => setPredictionCollapsed((v) => !v)}
-        />
+        <div className="prediction-panels-row">
+          <PredictionPanel
+            result={inference.state.result!}
+            tokenizer={state.tokenizer}
+            selectedTokenIndex={selectedTokenIndex}
+            onViewWhy={() => viewWhy("A")}
+            collapsed={predictionCollapsed}
+            onToggleCollapsed={() => setPredictionCollapsed((v) => !v)}
+            promptLabel={hasResultB ? t("inference.promptA") : undefined}
+          />
+          {hasResultB && (
+            <PredictionPanel
+              result={promptB.state.result!}
+              tokenizer={state.tokenizer}
+              selectedTokenIndex={selectedTokenIndex}
+              onViewWhy={() => viewWhy("B")}
+              collapsed={predictionCollapsed}
+              onToggleCollapsed={() => setPredictionCollapsed((v) => !v)}
+              promptLabel={t("inference.promptB")}
+            />
+          )}
+        </div>
       )}
       <div className="app-body">
         <aside className={"pane pane-tree" + (treeCollapsed ? " collapsed" : "")}>
@@ -272,6 +295,7 @@ export function App() {
           ) : (
             <div className="pane-inspector-body">
               <Inspector
+                model={model}
                 node={selectedNode}
                 activationShape={selectedId ? inference.state.result?.activations[selectedId]?.shape : undefined}
                 activationMagnitude={selectedId ? activationMagnitudeById?.[selectedId] : undefined}
@@ -318,6 +342,7 @@ export function App() {
             model={model}
             weightProvider={state.weightProvider}
             capture={inference.state.result!}
+            promptBCapture={hasResultB ? promptB.state.result : undefined}
             tokenizer={state.tokenizer}
             selectedTokenIndex={selectedTokenIndex}
             onSelectToken={setSelectedTokenIndex}
@@ -330,8 +355,11 @@ export function App() {
             weightProvider={state.weightProvider}
             adapter={state.adapter!}
             tokenIds={inference.state.result!.tokenIds}
+            promptBTokenIds={hasResultB ? promptB.state.result!.tokenIds : undefined}
             tokenizer={state.tokenizer}
             selectedTokenIndex={selectedTokenIndex}
+            source={attributionSource}
+            onSourceChange={setAttributionSource}
             onSelectNode={setSelectedId}
             onBusyChange={setAnalysisBusy}
           />

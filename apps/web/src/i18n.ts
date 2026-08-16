@@ -64,6 +64,8 @@ const en = {
   "graph.restorePanels": "Restore panels",
   "graph.showTensorShapes": "Show tensor shapes",
   "graph.hideTensorShapes": "Hide tensor shapes",
+  "graph.stackRepeats": "Stack repeated nodes",
+  "graph.unstackRepeats": "Show all nodes",
 
   "settings.title": "Settings",
   "settings.theme": "Theme",
@@ -133,6 +135,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "graph.restorePanels": "恢复面板",
     "graph.showTensorShapes": "显示张量形状",
     "graph.hideTensorShapes": "隐藏张量形状",
+    "graph.stackRepeats": "堆叠重复节点",
+    "graph.unstackRepeats": "显示全部节点",
 
     "settings.title": "设置",
     "settings.theme": "主题",
@@ -197,6 +201,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "graph.restorePanels": "Restaurar paneles",
     "graph.showTensorShapes": "Mostrar formas de tensor",
     "graph.hideTensorShapes": "Ocultar formas de tensor",
+    "graph.stackRepeats": "Apilar nodos repetidos",
+    "graph.unstackRepeats": "Mostrar todos los nodos",
 
     "settings.title": "Configuración",
     "settings.theme": "Tema",
@@ -261,6 +267,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "graph.restorePanels": "Restaurer les panneaux",
     "graph.showTensorShapes": "Afficher les formes de tenseur",
     "graph.hideTensorShapes": "Masquer les formes de tenseur",
+    "graph.stackRepeats": "Empiler les nœuds répétés",
+    "graph.unstackRepeats": "Afficher tous les nœuds",
 
     "settings.title": "Paramètres",
     "settings.theme": "Thème",
@@ -325,6 +333,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "graph.restorePanels": "Bedienfelder wiederherstellen",
     "graph.showTensorShapes": "Tensor-Formen anzeigen",
     "graph.hideTensorShapes": "Tensor-Formen ausblenden",
+    "graph.stackRepeats": "Wiederholte Knoten stapeln",
+    "graph.unstackRepeats": "Alle Knoten anzeigen",
 
     "settings.title": "Einstellungen",
     "settings.theme": "Design",
@@ -389,6 +399,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "graph.restorePanels": "パネルを復元",
     "graph.showTensorShapes": "テンソル形状を表示",
     "graph.hideTensorShapes": "テンソル形状を非表示",
+    "graph.stackRepeats": "繰り返しノードをまとめる",
+    "graph.unstackRepeats": "すべてのノードを表示",
 
     "settings.title": "設定",
     "settings.theme": "テーマ",
@@ -453,6 +465,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "graph.restorePanels": "패널 복원",
     "graph.showTensorShapes": "텐서 형태 표시",
     "graph.hideTensorShapes": "텐서 형태 숨기기",
+    "graph.stackRepeats": "반복 노드 묶기",
+    "graph.unstackRepeats": "모든 노드 표시",
 
     "settings.title": "설정",
     "settings.theme": "테마",
@@ -517,6 +531,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "graph.restorePanels": "Restaurar painéis",
     "graph.showTensorShapes": "Mostrar formas de tensor",
     "graph.hideTensorShapes": "Ocultar formas de tensor",
+    "graph.stackRepeats": "Empilhar nós repetidos",
+    "graph.unstackRepeats": "Mostrar todos os nós",
 
     "settings.title": "Configurações",
     "settings.theme": "Tema",
@@ -581,6 +597,8 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     "graph.restorePanels": "Восстановить панели",
     "graph.showTensorShapes": "Показать форму тензора",
     "graph.hideTensorShapes": "Скрыть форму тензора",
+    "graph.stackRepeats": "Свернуть повторяющиеся узлы",
+    "graph.unstackRepeats": "Показать все узлы",
 
     "settings.title": "Настройки",
     "settings.theme": "Тема",

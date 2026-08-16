@@ -17,7 +17,7 @@ import "reactflow/dist/style.css";
 import type { Model, ModelEdge, ModelNode } from "@llm-explorer/model-ir";
 import { categoryGlyph, categoryLabel, componentRegistry } from "../registry.js";
 import { layeredLayout } from "../layout.js";
-import { BLOCK_INPUT, buildLevel1Graph, buildLevel2Graph, ELLIPSIS } from "../graphUtils.js";
+import { BLOCK_INPUT, buildLevel1Graph, buildLevel2Graph, collapseRepeatedChains, ELLIPSIS, getLeafDescendants, STACK_PREFIX, type StackGroup } from "../graphUtils.js";
 import { formatCount } from "../format.js";
 import { useLocalStorageState } from "../useLocalStorageState.js";
 import { useTranslation } from "./LanguageContext.js";
@@ -48,6 +48,8 @@ interface IRNodeData {
   expandable?: boolean;
   inputPorts: number;
   outputPorts: number;
+  /** Set when this node stands in for a collapsed run of `stackCount` identical, sequentially-connected nodes — rendered as a small deck of cards instead of a single box. */
+  stackCount?: number;
 }
 
 /**
@@ -70,12 +72,14 @@ function PortHandles({ kind, position, count }: { kind: "target" | "source"; pos
 }
 
 function IRNodeComponent({ data }: { data: IRNodeData }) {
-  return (
+  const stacked = !!data.stackCount && data.stackCount > 1;
+  const card = (
     <div className={"ir-node nopan nodrag" + (data.selected ? " selected" : "") + (data.dimmed ? " dimmed" : "")} style={{ borderColor: data.color }}>
       <PortHandles kind="target" position={Position.Top} count={data.inputPorts} />
       <div className="ir-node-label">
         {data.glyph && <span className="ir-node-glyph">{data.glyph}</span>}
         {data.label}
+        {stacked && <span className="ir-node-stack-badge">× {data.stackCount}</span>}
       </div>
       <div className="ir-node-sub">{data.sublabel}</div>
       {data.dims && <div className="ir-node-dims">{data.dims}</div>}
@@ -87,6 +91,18 @@ function IRNodeComponent({ data }: { data: IRNodeData }) {
           with a sibling data-flow edge for the same numbered port. */}
       <Handle type="target" position={Position.Right} id="lane-in" style={{ opacity: 0 }} />
       <Handle type="source" position={Position.Right} id="lane-out" style={{ opacity: 0 }} />
+    </div>
+  );
+  // A collapsed run gets two faint offset copies of its own border peeking
+  // out behind the real card — a "deck of cards" cue that this one box
+  // stands in for several, without needing extra DOM for the common
+  // (non-stacked) case.
+  if (!stacked) return card;
+  return (
+    <div className="ir-node-stack-outer">
+      <div className="ir-node-stack-layer ir-node-stack-layer-2" style={{ borderColor: data.color }} />
+      <div className="ir-node-stack-layer ir-node-stack-layer-1" style={{ borderColor: data.color }} />
+      {card}
     </div>
   );
 }
@@ -134,6 +150,32 @@ function JunctionDot() {
   return <div className="graph-junction-dot" />;
 }
 
+interface ScopeBoxData {
+  label: string;
+  color: string;
+}
+
+/**
+ * A rounded, dashed frame drawn behind whichever leaf nodes belong to the
+ * currently-selected *container* — e.g. selecting "Attention" in the model
+ * tree while looking at a block's detail view has no node of its own to
+ * highlight (only its leaf children — Q/K/V Projection, RoPE, Output
+ * Projection — are actually rendered), so without this there was no visual
+ * feedback for that selection at all. A light tinted fill plus a dashed
+ * outline (rather than either alone) keeps the group legible whether
+ * you're scanning the overall shape or looking closely at the boundary —
+ * the same combination Figma/Miro use for named frames.
+ */
+function ScopeBox({ data }: { data: ScopeBoxData }) {
+  return (
+    <div className="graph-scope-box" style={{ borderColor: data.color, background: `${data.color}14` }}>
+      <span className="graph-scope-label" style={{ color: data.color, borderColor: data.color }}>
+        {data.label}
+      </span>
+    </div>
+  );
+}
+
 /**
  * "[n]" bracket glyph for the tensor-shape toggle, drawn as vector paths
  * instead of literal "[" / "]" characters — those two glyphs don't share a
@@ -157,13 +199,27 @@ function ShapeIcon({ active }: { active: boolean }) {
   );
 }
 
-const nodeTypes = { ir: IRNodeComponent, junction: JunctionDot };
+/** Two overlapping rounded rectangles for the "stack repeated nodes" toggle — echoes the same offset-card motif used on an actual stacked node, so the button reads as a small preview of what it does. */
+function StackIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1.5" y="1.5" width="8" height="6" rx="1.3" stroke="currentColor" strokeWidth="1.3" opacity={active ? 0.55 : 0.9} />
+      <rect x="4.5" y="6.5" width="8" height="6" rx="1.3" stroke="currentColor" strokeWidth="1.3" fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.18 : 0} />
+    </svg>
+  );
+}
+
+const nodeTypes = { ir: IRNodeComponent, junction: JunctionDot, scope: ScopeBox };
 const edgeTypes = { lane: ResidualLaneEdge, detour: DetourEdge };
 
 const EDGE_COLOR = "#94a3b8";
 const SKIP_EDGE_COLOR = "#64748b";
 /** Rough node width used only to eyeball where a junction dot sits horizontally — nodes auto-size, so this is an approximation, not a measurement. */
 const NOMINAL_NODE_WIDTH = 160;
+/** Rough node height, same caveat as NOMINAL_NODE_WIDTH — used only to size the scope box around a selected container's leaf children. */
+const NOMINAL_NODE_HEIGHT = 76;
+/** Breathing room between a scope box's edge and the nodes it encloses. */
+const SCOPE_PADDING = 26;
 /** Clearance between the widest node a lane has to clear and the lane itself. */
 const LANE_GAP = 90;
 /** Minimum horizontal separation between two lanes whose vertical runs overlap — keeps concurrent detours (e.g. both block residuals, or a residual and an unrelated skip) from tracing the same line. */
@@ -179,8 +235,13 @@ export function ArchitectureGraph({ model, view, selectedId, onSelect, onEnterBl
   // just browsing the architecture, so it stays opt-in rather than
   // appearing automatically whenever a node gets selected/hovered.
   const [showTensorShapes, setShowTensorShapes] = useLocalStorageState("panel:graph-tensor-shapes", false);
+  // Off by default: collapsing a repeated run (e.g. 5 near-identical
+  // Transformer Blocks) into one "× 5" node is a deliberate declutter step,
+  // not something that should silently hide blocks the user expects to see
+  // every time they open a model.
+  const [stackRepeats, setStackRepeats] = useLocalStorageState("panel:graph-stack-repeats", false);
 
-  const { nodeIds, edgeList } = useMemo(() => {
+  const { nodeIds: rawNodeIds, edgeList: rawEdgeList } = useMemo(() => {
     if (view.kind === "architecture") {
       const g = buildLevel1Graph(model, false);
       return { nodeIds: g.nodeIds, edgeList: g.edges };
@@ -188,6 +249,15 @@ export function ArchitectureGraph({ model, view, selectedId, onSelect, onEnterBl
     const g = buildLevel2Graph(model, view.blockId);
     return { nodeIds: g.nodeIds, edgeList: g.edges };
   }, [model, view]);
+
+  // Collapsing happens once, right after the view's raw graph is built, so
+  // every downstream step (layout, ports, lane routing, the scope box)
+  // just sees a smaller graph and needs no awareness that stacking exists.
+  const { nodeIds, edgeList, stackGroups } = useMemo(() => {
+    if (!stackRepeats) return { nodeIds: rawNodeIds, edgeList: rawEdgeList, stackGroups: new Map<string, StackGroup>() };
+    const collapsed = collapseRepeatedChains(model, rawNodeIds, rawEdgeList);
+    return { nodeIds: collapsed.nodeIds, edgeList: collapsed.edges, stackGroups: collapsed.stacks };
+  }, [stackRepeats, rawNodeIds, rawEdgeList, model]);
 
   const positions = useMemo(() => layeredLayout(nodeIds, edgeList), [nodeIds, edgeList]);
 
@@ -412,6 +482,44 @@ export function ArchitectureGraph({ model, view, selectedId, onSelect, onEnterBl
           };
         }
 
+        const stackInfo = stackGroups.get(id);
+        if (stackInfo) {
+          const info = componentRegistry[stackInfo.type];
+          const totalParams = stackInfo.memberIds.reduce((sum, mid) => {
+            const n = model.nodes[mid];
+            return sum + n.parameters.reduce((a, p) => a + p.logicalShape.reduce((x, y) => x * y, 1), 0);
+          }, 0);
+          const categoryText = categoryLabel[info.category] || info.label;
+          const sublabel = totalParams > 0 ? `${categoryText} · ${formatCount(totalParams)} params total` : categoryText;
+          const first = model.nodes[stackInfo.memberIds[0]];
+          const last = model.nodes[stackInfo.memberIds[stackInfo.memberIds.length - 1]];
+          let dims: string | undefined;
+          if (info.category === "linear") {
+            const inDims = first.inputs[0]?.dims;
+            const outDims = last.outputs[0]?.dims;
+            if (inDims?.length && outDims?.length) dims = `${inDims[inDims.length - 1]} → ${outDims[outDims.length - 1]}`;
+          }
+          return {
+            id,
+            type: "ir",
+            position: pos,
+            draggable: false,
+            selectable: false,
+            data: {
+              label: info.label,
+              sublabel,
+              glyph: categoryGlyph[info.category] || undefined,
+              dims,
+              color: info.color,
+              selected: false,
+              dimmed,
+              inputPorts,
+              outputPorts,
+              stackCount: stackInfo.memberIds.length,
+            },
+          };
+        }
+
         const node = model.nodes[id];
         const info = componentRegistry[node.type];
         const paramCount = node.parameters.reduce((a, p) => a + p.logicalShape.reduce((x, y) => x * y, 1), 0);
@@ -449,7 +557,7 @@ export function ArchitectureGraph({ model, view, selectedId, onSelect, onEnterBl
           },
         };
       }),
-    [nodeIds, positions, model, selectedId, relatedIds, outputPortsById, inputPortsById]
+    [nodeIds, positions, model, selectedId, relatedIds, outputPortsById, inputPortsById, stackGroups]
   );
 
   const junctionNodes: RFNode[] = useMemo(() => {
@@ -482,6 +590,62 @@ export function ArchitectureGraph({ model, view, selectedId, onSelect, onEnterBl
     }
     return junctions;
   }, [outputPortsById, inputPortsById, positions]);
+
+  // A container (e.g. "Attention") selected via the model tree has no node
+  // of its own in this view — only its leaf children do — so there'd
+  // otherwise be no visual feedback for that selection at all. When the
+  // selection is such a container, frame whichever of its leaf descendants
+  // are actually visible here.
+  const scopeBoxNode: RFNode<ScopeBoxData> | null = useMemo(() => {
+    if (!selectedId || nodeIds.includes(selectedId)) return null;
+    const container = model.nodes[selectedId];
+    if (!container || container.children.length === 0) return null;
+    const memberIds = getLeafDescendants(model, selectedId).filter((id) => nodeIds.includes(id));
+    if (memberIds.length === 0) return null;
+    const memberSet = new Set(memberIds);
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const id of memberIds) {
+      const p = positions.get(id);
+      if (!p) continue;
+      // `p.x`/`p.y` are a node's top-left corner (React Flow's own
+      // convention — confirmed against the actual rendered position, not
+      // assumed), so the right/bottom edge is the position plus the full
+      // nominal size, not half of it.
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x + NOMINAL_NODE_WIDTH);
+      minY = Math.min(minY, p.y);
+      maxY = Math.max(maxY, p.y + NOMINAL_NODE_HEIGHT);
+    }
+    if (minX === Infinity) return null;
+
+    // An edge routed through a side lane (e.g. V Projection -> Output
+    // Projection detouring around a Q/K-Norm rank) can bow out further than
+    // either endpoint's own node — if both endpoints belong to this group,
+    // that detour is purely internal to it and the frame should widen to
+    // keep it inside rather than let it poke out past the border.
+    for (const e of edgeList) {
+      if (!memberSet.has(e.source) || !memberSet.has(e.target)) continue;
+      const laneX = skipLaneXByEdge.get(e.id) ?? detourByEdge.get(e.id);
+      if (laneX === undefined) continue;
+      minX = Math.min(minX, laneX);
+      maxX = Math.max(maxX, laneX);
+    }
+
+    return {
+      id: `scope-${selectedId}`,
+      type: "scope",
+      position: { x: minX - SCOPE_PADDING, y: minY - SCOPE_PADDING },
+      style: { width: maxX - minX + SCOPE_PADDING * 2, height: maxY - minY + SCOPE_PADDING * 2 },
+      draggable: false,
+      selectable: false,
+      zIndex: -1,
+      data: { label: container.name, color: componentRegistry[container.type]?.color ?? "#6b7280" },
+    };
+  }, [selectedId, nodeIds, model, positions, edgeList, skipLaneXByEdge, detourByEdge]);
 
   const rfEdges: RFEdge[] = useMemo(
     () =>
@@ -530,7 +694,7 @@ export function ArchitectureGraph({ model, view, selectedId, onSelect, onEnterBl
 
   const handleNodeClick = useCallback(
     (_: unknown, n: RFNode) => {
-      if (n.id === ELLIPSIS || n.id === BLOCK_INPUT || n.type === "junction") return;
+      if (n.id === ELLIPSIS || n.id === BLOCK_INPUT || n.type === "junction" || n.type === "scope" || n.id.startsWith(STACK_PREFIX)) return;
       onSelect(n.id);
     },
     [onSelect]
@@ -538,11 +702,15 @@ export function ArchitectureGraph({ model, view, selectedId, onSelect, onEnterBl
 
   const handleNodeDoubleClick = useCallback(
     (_: unknown, n: RFNode) => {
-      if (n.id === ELLIPSIS || n.id === BLOCK_INPUT || n.type === "junction") return;
+      if (n.id.startsWith(STACK_PREFIX)) {
+        setStackRepeats(false);
+        return;
+      }
+      if (n.id === ELLIPSIS || n.id === BLOCK_INPUT || n.type === "junction" || n.type === "scope") return;
       const node = model.nodes[n.id];
       if (node?.type === "transformer_block") onEnterBlock(n.id);
     },
-    [model, onEnterBlock]
+    [model, onEnterBlock, setStackRepeats]
   );
 
   const viewKey = view.kind === "architecture" ? "arch" : `block:${view.blockId}`;
@@ -607,7 +775,7 @@ export function ArchitectureGraph({ model, view, selectedId, onSelect, onEnterBl
       )}
       <ReactFlow
         key={viewKey}
-        nodes={[...rfNodes, ...junctionNodes] as RFNode[]}
+        nodes={[...(scopeBoxNode ? [scopeBoxNode] : []), ...rfNodes, ...junctionNodes] as RFNode[]}
         edges={rfEdges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -632,11 +800,20 @@ export function ArchitectureGraph({ model, view, selectedId, onSelect, onEnterBl
             <span className="control-icon">{isMaxFrame ? "⤡" : "⤢"}</span>
           </ControlButton>
           <ControlButton
+            className="control-button-gap"
             onClick={() => setShowTensorShapes((v) => !v)}
             title={showTensorShapes ? t("graph.hideTensorShapes") : t("graph.showTensorShapes")}
           >
             <span className={"control-icon" + (showTensorShapes ? " active" : "")}>
               <ShapeIcon active={showTensorShapes} />
+            </span>
+          </ControlButton>
+          <ControlButton
+            onClick={() => setStackRepeats((v) => !v)}
+            title={stackRepeats ? t("graph.unstackRepeats") : t("graph.stackRepeats")}
+          >
+            <span className={"control-icon" + (stackRepeats ? " active" : "")}>
+              <StackIcon active={stackRepeats} />
             </span>
           </ControlButton>
         </Controls>

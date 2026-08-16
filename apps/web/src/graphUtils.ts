@@ -1,4 +1,4 @@
-import type { Model, ModelEdge } from "@llm-explorer/model-ir";
+import type { Model, ModelEdge, NodeType } from "@llm-explorer/model-ir";
 
 export function getDescendants(model: Model, id: string): string[] {
   const out: string[] = [];
@@ -160,3 +160,100 @@ export function buildLevel2Graph(model: Model, blockId: string): { nodeIds: stri
 }
 
 export { BLOCK_INPUT };
+
+const STACK_PREFIX = "__stack__";
+
+export interface StackGroup {
+  /** The collapsed run's members, in sequence order. */
+  memberIds: string[];
+  /** Every member shares this NodeType, by construction. */
+  type: NodeType;
+}
+
+/**
+ * Collapses each maximal run of same-type nodes connected in a straight
+ * chain (each one's sole outgoing edge feeds the next one's sole incoming
+ * edge) into a single synthetic "stack" node — e.g. five sequential
+ * Transformer Block nodes become one "Transformer Block × 5" node, with the
+ * chain's boundary edges reattached to it and its internal edges dropped.
+ * A run must be an actual straight line: a node with a branch (more than
+ * one outgoing edge) or a merge (more than one incoming edge) breaks it,
+ * same as a type change does.
+ *
+ * This only ever collapses *real* model nodes — synthetic markers like
+ * `ELLIPSIS`/`BLOCK_INPUT` (absent from `model.nodes`) can't start or
+ * extend a run, so an already-abbreviated block list naturally collapses
+ * into two shorter runs on either side of the ellipsis rather than one.
+ */
+export function collapseRepeatedChains(
+  model: Model,
+  nodeIds: string[],
+  edges: ModelEdge[]
+): { nodeIds: string[]; edges: ModelEdge[]; stacks: Map<string, StackGroup> } {
+  const idSet = new Set(nodeIds);
+  const outBy = new Map<string, ModelEdge[]>();
+  const inBy = new Map<string, ModelEdge[]>();
+  for (const e of edges) {
+    if (!idSet.has(e.source) || !idSet.has(e.target)) continue;
+    if (!outBy.has(e.source)) outBy.set(e.source, []);
+    outBy.get(e.source)!.push(e);
+    if (!inBy.has(e.target)) inBy.set(e.target, []);
+    inBy.get(e.target)!.push(e);
+  }
+  const isRealNode = (id: string) => !!model.nodes[id];
+
+  function nextInChain(id: string): string | null {
+    const outs = outBy.get(id);
+    if (!outs || outs.length !== 1) return null;
+    const target = outs[0].target;
+    if (target === id || !isRealNode(target)) return null;
+    if ((inBy.get(target)?.length ?? 0) !== 1) return null;
+    return model.nodes[target].type === model.nodes[id].type ? target : null;
+  }
+
+  function hasChainPredecessor(id: string): boolean {
+    const ins = inBy.get(id);
+    if (!ins || ins.length !== 1) return false;
+    return isRealNode(ins[0].source) && nextInChain(ins[0].source) === id;
+  }
+
+  const stacks = new Map<string, StackGroup>();
+  const replaced = new Map<string, string>();
+  for (const id of nodeIds) {
+    if (!isRealNode(id) || hasChainPredecessor(id)) continue;
+    const run = [id];
+    for (let next = nextInChain(id); next; next = nextInChain(next)) run.push(next);
+    if (run.length < 2) continue;
+    const stackId = `${STACK_PREFIX}${id}`;
+    stacks.set(stackId, { memberIds: run, type: model.nodes[id].type });
+    for (const m of run) replaced.set(m, stackId);
+  }
+  if (stacks.size === 0) return { nodeIds, edges, stacks };
+
+  const newNodeIds: string[] = [];
+  const seenStack = new Set<string>();
+  for (const id of nodeIds) {
+    const stackId = replaced.get(id);
+    if (!stackId) newNodeIds.push(id);
+    else if (!seenStack.has(stackId)) {
+      seenStack.add(stackId);
+      newNodeIds.push(stackId);
+    }
+  }
+
+  const newEdges: ModelEdge[] = [];
+  const seenEdge = new Set<string>();
+  for (const e of edges) {
+    const s = replaced.get(e.source) ?? e.source;
+    const t = replaced.get(e.target) ?? e.target;
+    if (s === t) continue; // now-internal to a single stack
+    const key = `${s}->${t}`;
+    if (seenEdge.has(key)) continue;
+    seenEdge.add(key);
+    newEdges.push({ ...e, id: key, source: s, target: t });
+  }
+
+  return { nodeIds: newNodeIds, edges: newEdges, stacks };
+}
+
+export { STACK_PREFIX };
