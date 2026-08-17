@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import type { Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@llm-explorer/model-ir";
-import { fetchArrayBuffer, hfResolveUrl, peekModelType } from "@llm-explorer/hf-client";
-import { loadTokenizer, type Tokenizer } from "@llm-explorer/tokenizer";
+import type { Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@tensorium/model-ir";
+import { fetchArrayBuffer, hfResolveUrl, peekModelType } from "@tensorium/hf-client";
+import { loadTokenizer, type Tokenizer } from "@tensorium/tokenizer";
 import { ADAPTERS } from "./adapters.js";
 
 /** The exact bytes of each source file, kept around purely so "save model to disk" can hand the user back byte-identical files rather than re-serializing anything. */

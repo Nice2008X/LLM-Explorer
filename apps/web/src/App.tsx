@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
-import type { Model, Tensor } from "@llm-explorer/model-ir";
+import type { Model, Tensor } from "@tensorium/model-ir";
 import { useModel } from "./useModel.js";
 import { useInference } from "./useInference.js";
 import { useLocalStorageState } from "./useLocalStorageState.js";

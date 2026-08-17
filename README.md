@@ -1,4 +1,4 @@
-# LLM Architecture Explorer
+# Tensorium
 
 An interactive, in-browser explorer and debugger for large language model
 internals. Point it at a Hugging Face repo that ships `safetensors`
@@ -17,7 +17,7 @@ written in TypeScript. Fetched files are cached in the browser's IndexedDB
 network round trip at all — files over 50 MB are never written to that
 cache and always come straight from Hugging Face instead.
 
-![Screenshot of the LLM Architecture Explorer: the model tree, a transformer block's Attention internals with a scope box grouping its Q/K/V/Output projections, the Inspector panel showing an Input Construction breakdown, and the Tensor Explorer's activation heatmap](docs/screenshot.png)
+![Screenshot of Tensorium: the model tree, a transformer block's Attention internals with a scope box grouping its Q/K/V/Output projections, the Inspector panel showing an Input Construction breakdown, and the Tensor Explorer's activation heatmap](docs/screenshot.png)
 
 Note: the built-in presets are tiny, randomly-initialized test checkpoints,
 not real trained models — predictions won't be coherent. This tool is for
@@ -235,8 +235,8 @@ No Node.js install needed — this builds the static production bundle in
 a `node:22-alpine` stage and serves it with `nginx:alpine`:
 
 ```bash
-docker build -t llm-explorer .
-docker run --rm -p 8080:80 llm-explorer
+docker build -t tensorium .
+docker run --rm -p 8080:80 tensorium
 ```
 
 Then open `http://localhost:8080`. Since the whole app is a static
@@ -267,7 +267,7 @@ it's just a file server.
 ## Adding a new architecture
 
 1. Write a new package under `packages/model-adapters/`, implementing the
-   `ModelAdapter` interface from `@llm-explorer/model-ir` (`canLoad`,
+   `ModelAdapter` interface from `@tensorium/model-ir` (`canLoad`,
    `loadMetadata`, `buildGraph`, `getWeightProvider`, `runInference`).
 2. If the architecture is Llama-shaped (RoPE + RMSNorm + gated FFN — most
    are), it's very likely a thin wrapper over `adapter-llama-family`
@@ -275,7 +275,7 @@ it's just a file server.
    the minimal case and `gemma`/`phi` for ones with real option overrides
    (embedding scaling, fused projections, QK-Norm, etc). Otherwise,
    implement `buildGraph`/`runInference` directly with
-   `@llm-explorer/nn-ops`'s primitives.
+   `@tensorium/nn-ops`'s primitives.
 3. Register the adapter (and, optionally, a preset checkpoint) in
    `apps/web/src/adapters.ts`.
 

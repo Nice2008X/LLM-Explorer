@@ -1,5 +1,5 @@
-import type { Model } from "@llm-explorer/model-ir";
-import { totalParameterCount, totalParameterBytes } from "@llm-explorer/model-ir";
+import type { Model } from "@tensorium/model-ir";
+import { totalParameterCount, totalParameterBytes } from "@tensorium/model-ir";
 import { formatBytes, formatCount } from "../format.js";
 
 export function ModelInfoBar({ model }: { model: Model }) {

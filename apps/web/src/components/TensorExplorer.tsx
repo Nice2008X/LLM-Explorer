@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Model, ModelNode, ParameterRef, WeightProvider, Tensor } from "@llm-explorer/model-ir";
-import { numElements } from "@llm-explorer/model-ir";
-import { computeStats, type TensorStats } from "@llm-explorer/tensor-core";
+import type { Model, ModelNode, ParameterRef, WeightProvider, Tensor } from "@tensorium/model-ir";
+import { numElements } from "@tensorium/model-ir";
+import { computeStats, type TensorStats } from "@tensorium/tensor-core";
 import { Heatmap } from "./Heatmap.js";
 import { Histogram } from "./Histogram.js";
 import { AttentionView } from "./AttentionView.js";

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { ActivationCapture, Intervention, Model, ModelAdapter, ModelNode, WeightProvider } from "@llm-explorer/model-ir";
-import type { Tokenizer } from "@llm-explorer/tokenizer";
+import type { ActivationCapture, Intervention, Model, ModelAdapter, ModelNode, WeightProvider } from "@tensorium/model-ir";
+import type { Tokenizer } from "@tensorium/tokenizer";
 import { topKFromLogits, type RankedToken } from "../logits.js";
 
 interface Props {

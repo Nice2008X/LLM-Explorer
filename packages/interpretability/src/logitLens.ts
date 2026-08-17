@@ -1,5 +1,5 @@
-import type { ActivationCapture, Model, WeightProvider } from "@llm-explorer/model-ir";
-import { gemmaRmsNorm, layerNorm, linear, rmsNorm, softmaxRow, tensorToMatrix, tensorToVector, type Matrix } from "@llm-explorer/nn-ops";
+import type { ActivationCapture, Model, WeightProvider } from "@tensorium/model-ir";
+import { gemmaRmsNorm, layerNorm, linear, rmsNorm, softmaxRow, tensorToMatrix, tensorToVector, type Matrix } from "@tensorium/nn-ops";
 import { yieldToBrowser } from "./yield.js";
 
 export interface LogitLensEntry {

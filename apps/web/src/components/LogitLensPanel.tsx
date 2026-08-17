@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import type { Model, WeightProvider, ActivationCapture } from "@llm-explorer/model-ir";
-import { computeLogitLens, type LogitLensEntry } from "@llm-explorer/interpretability";
-import type { Tokenizer } from "@llm-explorer/tokenizer";
+import type { Model, WeightProvider, ActivationCapture } from "@tensorium/model-ir";
+import { computeLogitLens, type LogitLensEntry } from "@tensorium/interpretability";
+import type { Tokenizer } from "@tensorium/tokenizer";
 import { formatPercent } from "../format.js";
 import { useTranslation } from "./LanguageContext.js";
 

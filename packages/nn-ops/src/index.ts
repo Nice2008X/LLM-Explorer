@@ -8,7 +8,7 @@
 // since this is meant to reproduce real model behavior for debugging, not
 // just something GELU-shaped.
 
-import type { Tensor } from "@llm-explorer/model-ir";
+import type { Tensor } from "@tensorium/model-ir";
 
 export type Matrix = number[][]; // [rows][cols]
 

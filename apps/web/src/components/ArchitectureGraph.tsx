@@ -17,7 +17,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { toPng } from "html-to-image";
-import type { Model, ModelEdge, ModelNode } from "@llm-explorer/model-ir";
+import type { Model, ModelEdge, ModelNode } from "@tensorium/model-ir";
 import { categoryGlyph, categoryLabel, componentRegistry } from "../registry.js";
 import { layeredLayout } from "../layout.js";
 import { BLOCK_INPUT, buildLevel1Graph, buildLevel2Graph, collapseRepeatedChains, ELLIPSIS, getLeafDescendants, STACK_PREFIX, type StackGroup } from "../graphUtils.js";

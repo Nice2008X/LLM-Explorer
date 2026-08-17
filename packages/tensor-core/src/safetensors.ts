@@ -1,4 +1,4 @@
-import type { Tensor, TensorSlice } from "@llm-explorer/model-ir";
+import type { Tensor, TensorSlice } from "@tensorium/model-ir";
 
 export interface SafetensorsEntry {
   dtype: string;

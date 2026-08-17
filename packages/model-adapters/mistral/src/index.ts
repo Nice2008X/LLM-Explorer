@@ -1,7 +1,7 @@
-import type { Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@llm-explorer/model-ir";
-import { SafetensorsWeightProvider } from "@llm-explorer/tensor-core";
-import { loadSafetensorsMetadata } from "@llm-explorer/hf-client";
-import { buildModelConfig, buildGraph, runInference, type LlamaFamilyRawConfig } from "@llm-explorer/adapter-llama-family";
+import type { Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@tensorium/model-ir";
+import { SafetensorsWeightProvider } from "@tensorium/tensor-core";
+import { loadSafetensorsMetadata } from "@tensorium/hf-client";
+import { buildModelConfig, buildGraph, runInference, type LlamaFamilyRawConfig } from "@tensorium/adapter-llama-family";
 
 // Mistral's architecture and config.json field names are essentially
 // identical to Llama's (RoPE, RMSNorm, SwiGLU, separate Q/K/V) — the real

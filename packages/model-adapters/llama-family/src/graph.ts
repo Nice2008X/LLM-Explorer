@@ -1,5 +1,5 @@
-import type { Model, ModelConfig, ModelMetadata, ModelNode, NodeType, ParameterRef, TensorSlice } from "@llm-explorer/model-ir";
-import { numElements, dtypeSize, modelSourceLabel } from "@llm-explorer/model-ir";
+import type { Model, ModelConfig, ModelMetadata, ModelNode, NodeType, ParameterRef, TensorSlice } from "@tensorium/model-ir";
+import { numElements, dtypeSize, modelSourceLabel } from "@tensorium/model-ir";
 
 /**
  * The shared config surface across Llama, Mistral, and Gemma's config.json —

@@ -1,5 +1,5 @@
-import type { ActivationCapture } from "@llm-explorer/model-ir";
-import type { Tokenizer } from "@llm-explorer/tokenizer";
+import type { ActivationCapture } from "@tensorium/model-ir";
+import type { Tokenizer } from "@tensorium/tokenizer";
 import { topKFromLogits } from "../logits.js";
 import { formatPercent } from "../format.js";
 import { useTranslation } from "./LanguageContext.js";

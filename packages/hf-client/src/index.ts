@@ -1,5 +1,5 @@
-import type { ModelMetadata, ModelSource } from "@llm-explorer/model-ir";
-import { parseSafetensorsHeader } from "@llm-explorer/tensor-core";
+import type { ModelMetadata, ModelSource } from "@tensorium/model-ir";
+import { parseSafetensorsHeader } from "@tensorium/tensor-core";
 import { fetchCachedArrayBuffer } from "./modelCache.js";
 
 export { MAX_CACHEABLE_BYTES } from "./modelCache.js";

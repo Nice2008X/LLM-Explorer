@@ -1,4 +1,4 @@
-import type { ModelEdge } from "@llm-explorer/model-ir";
+import type { ModelEdge } from "@tensorium/model-ir";
 
 export interface LayoutPosition {
   x: number;

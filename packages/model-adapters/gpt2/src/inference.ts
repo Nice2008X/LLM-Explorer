@@ -1,4 +1,4 @@
-import type { ActivationCapture, Intervention, Model, WeightProvider } from "@llm-explorer/model-ir";
+import type { ActivationCapture, Intervention, Model, WeightProvider } from "@tensorium/model-ir";
 import {
   addMatrices,
   applyActivation,
@@ -12,7 +12,7 @@ import {
   tensorToMatrix,
   tensorToVector,
   type Matrix,
-} from "@llm-explorer/nn-ops";
+} from "@tensorium/nn-ops";
 
 export async function runInference(model: Model, weightProvider: WeightProvider, tokenIds: number[], interventions?: Intervention[]): Promise<ActivationCapture> {
   const cfg = model.config;
@@ -119,7 +119,7 @@ export async function runInference(model: Model, weightProvider: WeightProvider,
   };
 }
 
-function headsToTensor(headWeights: number[][][]): import("@llm-explorer/model-ir").Tensor {
+function headsToTensor(headWeights: number[][][]): import("@tensorium/model-ir").Tensor {
   const numHeads = headWeights.length;
   const S = headWeights[0]?.length ?? 0;
   const data = new Float64Array(numHeads * S * S);

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Tensor } from "@llm-explorer/model-ir";
+import type { Tensor } from "@tensorium/model-ir";
 
 interface Props {
   attentionWeights: Tensor; // [numHeads, seqLen, seqLen]

@@ -1,7 +1,7 @@
-import type { Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@llm-explorer/model-ir";
-import { SafetensorsWeightProvider } from "@llm-explorer/tensor-core";
-import { loadSafetensorsMetadata } from "@llm-explorer/hf-client";
-import { buildModelConfig, buildGraph, runInference, type LlamaFamilyRawConfig } from "@llm-explorer/adapter-llama-family";
+import type { Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@tensorium/model-ir";
+import { SafetensorsWeightProvider } from "@tensorium/tensor-core";
+import { loadSafetensorsMetadata } from "@tensorium/hf-client";
+import { buildModelConfig, buildGraph, runInference, type LlamaFamilyRawConfig } from "@tensorium/adapter-llama-family";
 
 // Phi-4 reuses the Phi-3 architecture class outright (architectures:
 // ["Phi3ForCausalLM"], model_type: "phi3" — same as how Qwen2.5 reuses

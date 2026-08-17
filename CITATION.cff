@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "LLM Architecture Explorer"
+title: "Tensorium"
 abstract: >-
   An interactive, in-browser explorer and debugger for large language model
   internals. Loads a Hugging Face model's real config and safetensors

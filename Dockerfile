@@ -1,4 +1,4 @@
-# LLM Architecture Explorer is a fully client-side app (no backend, no
+# Tensorium is a fully client-side app (no backend, no
 # GPU) — this image just builds the static bundle and serves it. Any
 # static file host works too; this is the containerized equivalent.
 

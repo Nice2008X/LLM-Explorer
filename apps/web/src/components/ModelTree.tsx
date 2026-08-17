@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Model, ModelNode } from "@llm-explorer/model-ir";
+import type { Model, ModelNode } from "@tensorium/model-ir";
 
 interface Props {
   model: Model;

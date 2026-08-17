@@ -1,4 +1,4 @@
-import type { TensorStats } from "@llm-explorer/tensor-core";
+import type { TensorStats } from "@tensorium/tensor-core";
 
 export function Histogram({ stats }: { stats: TensorStats }) {
   const max = Math.max(1, ...stats.histogram.map((b) => b.count));

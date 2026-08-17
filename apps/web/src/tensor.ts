@@ -1,4 +1,4 @@
-import type { ParameterRef, TensorSlice } from "@llm-explorer/model-ir";
+import type { ParameterRef, TensorSlice } from "@tensorium/model-ir";
 
 export function parameterKey(ref: ParameterRef): string {
   return `${ref.name}#${ref.slice?.ranges ? JSON.stringify(ref.slice.ranges) : "full"}`;

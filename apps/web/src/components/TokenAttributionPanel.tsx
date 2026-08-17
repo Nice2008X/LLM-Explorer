@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import type { Model, ModelAdapter, WeightProvider } from "@llm-explorer/model-ir";
-import { computeTokenAttribution, computeHeadAttribution, type TokenAttributionResult, type HeadAttributionResult } from "@llm-explorer/interpretability";
-import type { Tokenizer } from "@llm-explorer/tokenizer";
+import type { Model, ModelAdapter, WeightProvider } from "@tensorium/model-ir";
+import { computeTokenAttribution, computeHeadAttribution, type TokenAttributionResult, type HeadAttributionResult } from "@tensorium/interpretability";
+import type { Tokenizer } from "@tensorium/tokenizer";
 import { useTranslation } from "./LanguageContext.js";
 
 interface Props {

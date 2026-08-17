@@ -1,5 +1,5 @@
-import type { ModelSource } from "@llm-explorer/model-ir";
-import { fetchJson, hfResolveUrl, readLocalJson } from "@llm-explorer/hf-client";
+import type { ModelSource } from "@tensorium/model-ir";
+import { fetchJson, hfResolveUrl, readLocalJson } from "@tensorium/hf-client";
 import { bpeMerge } from "./bpe.js";
 import { gpt2ByteDecode, gpt2Pretokenize, resolveByteLevel, type PreTokenizerSpec } from "./gpt2Pretokenize.js";
 import { normalizerHasPrepend, normalizerRequiresNFC, spBpeDecodePieces, spBpePretokenize, type NormalizerSpec } from "./llamaPretokenize.js";

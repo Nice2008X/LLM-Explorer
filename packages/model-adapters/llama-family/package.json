@@ -1,13 +1,13 @@
 {
-  "name": "@llm-explorer/adapter-llama-family",
+  "name": "@tensorium/adapter-llama-family",
   "version": "0.1.0",
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "dependencies": {
-    "@llm-explorer/model-ir": "*",
-    "@llm-explorer/tensor-core": "*",
-    "@llm-explorer/hf-client": "*",
-    "@llm-explorer/nn-ops": "*"
+    "@tensorium/model-ir": "*",
+    "@tensorium/tensor-core": "*",
+    "@tensorium/hf-client": "*",
+    "@tensorium/nn-ops": "*"
   }
 }

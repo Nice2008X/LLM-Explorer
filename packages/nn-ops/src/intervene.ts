@@ -1,4 +1,4 @@
-import type { Intervention } from "@llm-explorer/model-ir";
+import type { Intervention } from "@tensorium/model-ir";
 import type { Matrix } from "./index.js";
 
 /**

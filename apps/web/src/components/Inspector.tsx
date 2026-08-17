@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { Model, ModelNode } from "@llm-explorer/model-ir";
+import type { Model, ModelNode } from "@tensorium/model-ir";
 import { componentRegistry } from "../registry.js";
 
 function formatDims(dims: Array<number | string>): string {

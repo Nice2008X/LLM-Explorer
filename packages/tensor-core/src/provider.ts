@@ -1,5 +1,5 @@
-import type { ParameterRef, Tensor, TensorSlice, WeightProvider } from "@llm-explorer/model-ir";
-import { dtypeSize, numElements } from "@llm-explorer/model-ir";
+import type { ParameterRef, Tensor, TensorSlice, WeightProvider } from "@tensorium/model-ir";
+import { dtypeSize, numElements } from "@tensorium/model-ir";
 import { parseSafetensorsHeader, readTensor, type SafetensorsFile } from "./safetensors.js";
 
 /**

@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
-import type { ActivationCapture, Model, ModelAdapter, WeightProvider } from "@llm-explorer/model-ir";
-import type { Tokenizer } from "@llm-explorer/tokenizer";
+import type { ActivationCapture, Model, ModelAdapter, WeightProvider } from "@tensorium/model-ir";
+import type { Tokenizer } from "@tensorium/tokenizer";
 
 export interface InferenceState {
   status: "idle" | "running" | "ready" | "error";

@@ -1,6 +1,6 @@
-import type { Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@llm-explorer/model-ir";
-import { SafetensorsWeightProvider } from "@llm-explorer/tensor-core";
-import { loadSafetensorsMetadata } from "@llm-explorer/hf-client";
+import type { Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@tensorium/model-ir";
+import { SafetensorsWeightProvider } from "@tensorium/tensor-core";
+import { loadSafetensorsMetadata } from "@tensorium/hf-client";
 import { buildModelConfig, buildGraph, type GPT2RawConfig } from "./graph.js";
 import { runInference } from "./inference.js";
 

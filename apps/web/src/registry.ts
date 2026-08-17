@@ -1,4 +1,4 @@
-import type { NodeType } from "@llm-explorer/model-ir";
+import type { NodeType } from "@tensorium/model-ir";
 
 /** A coarse operation family, orthogonal to the specific NodeType — lets the graph show "what kind of thing is this" (a shape + short word) at a glance, without reading the label. Several distinct NodeTypes share one category (e.g. every *_projection is "linear"). */
 export type OperationCategory = "structural" | "normalization" | "linear" | "activation" | "elementwise" | "addition" | "other";

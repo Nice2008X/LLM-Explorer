@@ -1,4 +1,4 @@
-import type { ActivationCapture, Intervention, Model, Tensor, WeightProvider } from "@llm-explorer/model-ir";
+import type { ActivationCapture, Intervention, Model, Tensor, WeightProvider } from "@tensorium/model-ir";
 import {
   addMatrices,
   applyActivation,
@@ -17,7 +17,7 @@ import {
   tensorToMatrix,
   tensorToVector,
   type Matrix,
-} from "@llm-explorer/nn-ops";
+} from "@tensorium/nn-ops";
 
 export async function runInference(model: Model, weightProvider: WeightProvider, tokenIds: number[], interventions?: Intervention[]): Promise<ActivationCapture> {
   const cfg = model.config;

@@ -1,4 +1,4 @@
-import type { Model, ModelAdapter, ModelNode, WeightProvider } from "@llm-explorer/model-ir";
+import type { Model, ModelAdapter, ModelNode, WeightProvider } from "@tensorium/model-ir";
 import { yieldToBrowser } from "./yield.js";
 
 export interface HeadAttributionEntry {

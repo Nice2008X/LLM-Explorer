@@ -1,18 +1,18 @@
-import type { ModelAdapter } from "@llm-explorer/model-ir";
-import { GPT2Adapter } from "@llm-explorer/adapter-gpt2";
-import { LlamaAdapter } from "@llm-explorer/adapter-llama";
-import { MistralAdapter } from "@llm-explorer/adapter-mistral";
-import { GemmaAdapter } from "@llm-explorer/adapter-gemma";
-import { QwenAdapter } from "@llm-explorer/adapter-qwen";
-import { Qwen3Adapter } from "@llm-explorer/adapter-qwen3";
-import { PhiAdapter } from "@llm-explorer/adapter-phi";
-import { Glm4Adapter } from "@llm-explorer/adapter-glm4";
+import type { ModelAdapter } from "@tensorium/model-ir";
+import { GPT2Adapter } from "@tensorium/adapter-gpt2";
+import { LlamaAdapter } from "@tensorium/adapter-llama";
+import { MistralAdapter } from "@tensorium/adapter-mistral";
+import { GemmaAdapter } from "@tensorium/adapter-gemma";
+import { QwenAdapter } from "@tensorium/adapter-qwen";
+import { Qwen3Adapter } from "@tensorium/adapter-qwen3";
+import { PhiAdapter } from "@tensorium/adapter-phi";
+import { Glm4Adapter } from "@tensorium/adapter-glm4";
 
 /**
  * Every architecture the explorer supports. Adding a new one means writing
  * a new adapter package and adding it here — nothing else in the app
  * changes. Mistral, Gemma, Qwen2, Qwen3, and Phi-3/4 are all thin wrappers
- * around `@llm-explorer/adapter-llama-family` (same graph shape and
+ * around `@tensorium/adapter-llama-family` (same graph shape and
  * forward pass as Llama, parameterized by their real differences — GQA
  * ratio for Mistral; explicit head_dim, a (1+weight) RMSNorm, and
  * embedding scaling for Gemma; a bias on Q/K/V projections for Qwen2; a

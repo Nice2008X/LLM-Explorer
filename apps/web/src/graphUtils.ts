@@ -1,4 +1,4 @@
-import type { Model, ModelEdge, NodeType } from "@llm-explorer/model-ir";
+import type { Model, ModelEdge, NodeType } from "@tensorium/model-ir";
 
 export function getDescendants(model: Model, id: string): string[] {
   const out: string[] = [];
