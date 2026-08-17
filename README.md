@@ -3,7 +3,7 @@
 An interactive, in-browser explorer and debugger for large language model
 internals. Point it at a Hugging Face repo that ships `safetensors`
 weights for one of the [supported architectures](#supported-architectures)
-(GPT-2, Llama, Mistral, Gemma, Qwen2, Qwen3, or Phi-3/4) and it parses the
+(GPT-2, Llama, Mistral, Gemma, Qwen2, Qwen3, Phi-3/4, GLM-4, or OLMo) and it parses the
 model's real config and weights, renders its architecture as a navigable
 graph, runs an actual forward pass in the browser (no backend, no GPU),
 and lets you inspect every tensor, watch predictions form layer by layer,
@@ -110,9 +110,10 @@ one weight (GPT-2's `c_attn`, Phi's `qkv_proj`/`gate_up_proj`) without
 special-casing the rest of the pipeline.
 
 Most of the supported architectures (Llama, Mistral, Gemma, Qwen2/2.5,
-Qwen3, Phi-3/4) are RoPE + RMSNorm + gated-MLP "Llama-shaped" models that
-differ only in a handful of concrete details (GQA ratio, an explicit
-`head_dim`, a bias here, a fused projection there). Rather than
+Qwen3, Phi-3/4, GLM-4, OLMo) are RoPE + gated-MLP "Llama-shaped" models
+that differ only in a handful of concrete details (GQA ratio, an explicit
+`head_dim`, a bias here, a fused projection there, or — OLMo's case — a
+non-parametric LayerNorm instead of RMSNorm). Rather than
 duplicating the graph-building and forward-pass code per architecture,
 they're all thin wrappers around one shared, option-parameterized engine
 (`adapter-llama-family`) — see [Adding a new
@@ -175,6 +176,7 @@ apps/
 | Qwen3 | `adapter-qwen3` | [`tiny-random/qwen3`](https://huggingface.co/tiny-random/qwen3) |
 | Phi-3 / Phi-4 | `adapter-phi` | [`tiny-random/phi-4`](https://huggingface.co/tiny-random/phi-4) |
 | GLM-4 | `adapter-glm4` | [`tiny-random/glm-4`](https://huggingface.co/tiny-random/glm-4) |
+| OLMo | `adapter-olmo` | [`katuni4ka/tiny-random-olmo-hf`](https://huggingface.co/katuni4ka/tiny-random-olmo-hf) |
 
 These are all deliberately tiny (randomly-initialized, few-layer) test
 checkpoints, chosen so the full model can be loaded and explored instantly
@@ -308,6 +310,9 @@ project's own reimplementation of the same idea.
   architectural differences (sandwich norms, alternating attention, logit
   softcapping) it doesn't implement.
 - Mistral's sliding-window attention isn't modeled.
+- Only OLMo (v1) is supported; OLMo 2 uses a different block topology
+  (RMSNorm applied after each sub-layer instead of before it, plus
+  per-head QK-norm) that needs its own adapter.
 - Multimodal and active-MoE architectures aren't supported (see
   [Supported architectures](#supported-architectures)).
 - Token attribution is occlusion-based only — no gradient-based

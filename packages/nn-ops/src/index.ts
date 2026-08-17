@@ -115,6 +115,11 @@ export function scaleMatrix(x: Matrix, factor: number): Matrix {
   return x.map((row) => row.map((v) => v * factor));
 }
 
+/** Element-wise clamp to [min, max] — OLMo's optional clip_qkv clips Q/K/V projections right after they're computed, before RoPE. */
+export function clamp(x: Matrix, min: number, max: number): Matrix {
+  return x.map((row) => row.map((v) => Math.min(max, Math.max(min, v))));
+}
+
 /** HF's "gelu_new" / gelu_pytorch_tanh approximation — what GPT-2 actually uses. */
 export function geluNew(x: number): number {
   return 0.5 * x * (1 + Math.tanh(Math.sqrt(2 / Math.PI) * (x + 0.044715 * x ** 3)));

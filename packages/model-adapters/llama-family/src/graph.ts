@@ -24,6 +24,8 @@ export interface LlamaFamilyRawConfig {
   tie_word_embeddings?: boolean;
   /** GLM-4 rotates only this fraction of each head's dimensions (the rest pass through RoPE unrotated) — a real config.json field, unlike the other family-defining traits below, which read as adapter options instead since nothing in config.json states them directly. */
   partial_rotary_factor?: number;
+  /** OLMo: clamps Q/K/V projections to [-clip_qkv, clip_qkv] right after projection, before RoPE. null (the common case) disables it. */
+  clip_qkv?: number | null;
 }
 
 export interface LlamaFamilyOptions {
@@ -45,6 +47,8 @@ export interface LlamaFamilyOptions {
   fusedGateUp?: boolean;
   /** GLM-4's "sandwich" norm: an extra RMSNorm applied to each sub-layer's output (post_self_attn_layernorm after attention, post_mlp_layernorm after the FFN) right before it's added back into the residual stream — on top of, not instead of, the usual pre-norms. */
   sandwichNorm?: boolean;
+  /** OLMo (v1) replaces RMSNorm with a LayerNorm that has no learnable weight or bias at all (fixed gamma=1, beta=0) — every other model in this family uses "rmsnorm". */
+  normType?: "rmsnorm" | "layernorm_no_affine";
 }
 
 export function buildModelConfig(raw: LlamaFamilyRawConfig, options: LlamaFamilyOptions): ModelConfig {
@@ -71,6 +75,12 @@ export function buildModelConfig(raw: LlamaFamilyRawConfig, options: LlamaFamily
     );
   }
 
+  const normType = options.normType ?? "rmsnorm";
+  // OLMo's LayerNorm has no config.json field for epsilon — HF hardcodes
+  // 1e-5 for it. rms_norm_eps (default 1e-6) is a different family's knob;
+  // only fall back to it here if a checkpoint's config explicitly sets it.
+  const normEps = normType === "layernorm_no_affine" ? raw.rms_norm_eps ?? 1e-5 : raw.rms_norm_eps ?? 1e-6;
+
   return {
     modelType: raw.model_type ?? options.defaultModelType,
     numLayers: raw.num_hidden_layers,
@@ -83,7 +93,7 @@ export function buildModelConfig(raw: LlamaFamilyRawConfig, options: LlamaFamily
       numKeyValueHeads: raw.num_key_value_heads ?? numHeads,
       headDim,
       partialRotaryFactor,
-      rmsNormEps: raw.rms_norm_eps ?? 1e-6,
+      rmsNormEps: normEps,
       activationFunction: raw.hidden_act ?? "silu",
       ropeTheta: raw.rope_theta ?? 10000,
       tiedEmbeddings: raw.tie_word_embeddings ?? options.tiedByDefault ?? false,
@@ -94,6 +104,8 @@ export function buildModelConfig(raw: LlamaFamilyRawConfig, options: LlamaFamily
       fusedQkv: options.fusedQkv ?? false,
       fusedGateUp: options.fusedGateUp ?? false,
       sandwichNorm: options.sandwichNorm ?? false,
+      normType,
+      clipQkv: raw.clip_qkv ?? null,
     },
   };
 }
@@ -129,6 +141,9 @@ export function buildGraph(metadata: ModelMetadata, providerId: string): Model {
   const hasFusedQkv = cfg.extra.fusedQkv === true;
   const hasFusedGateUp = cfg.extra.fusedGateUp === true;
   const hasSandwichNorm = cfg.extra.sandwichNorm === true;
+  const isLayerNormNoAffine = cfg.extra.normType === "layernorm_no_affine";
+  const clipQkv = cfg.extra.clipQkv != null ? Number(cfg.extra.clipQkv) : null;
+  const normLabel = (suffix: string) => (isLayerNormNoAffine ? `LayerNorm (${suffix})` : `RMSNorm (${suffix})`);
 
   function node(id: string, type: NodeType, name: string, parentId: string | null, opts: Partial<ModelNode> = {}): ModelNode {
     const n: ModelNode = {
@@ -151,7 +166,16 @@ export function buildGraph(metadata: ModelMetadata, providerId: string): Model {
     edges.push({ id: `${source}->${target}`, source, target, label });
   }
 
-  function rmsNormNode(id: string, label: string, parentId: string, weightName: string) {
+  function normNode(id: string, label: string, parentId: string, weightName: string) {
+    if (isLayerNormNoAffine) {
+      // OLMo: true LayerNorm (re-centers by mean, not just RMS-scaled) with
+      // no learnable weight or bias at all — fixed gamma=1, beta=0.
+      return node(id, "layer_norm", label, parentId, {
+        inputs: [{ dims: seqH }],
+        outputs: [{ dims: seqH }],
+        metadata: { note: "OLMo variant: non-parametric — no learnable weight or bias (fixed gamma=1, beta=0)." },
+      });
+    }
     return node(id, "rms_norm", label, parentId, {
       inputs: [{ dims: seqH }],
       outputs: [{ dims: seqH }],
@@ -204,7 +228,7 @@ export function buildGraph(metadata: ModelMetadata, providerId: string): Model {
     edge(prevOut, b);
 
     const rms1 = `${b}.rms1`;
-    rmsNormNode(rms1, "RMSNorm (pre-attention)", b, `${L}.input_layernorm.weight`);
+    normNode(rms1, normLabel("pre-attention"), b, `${L}.input_layernorm.weight`);
     edge(b, rms1);
 
     const attn = `${b}.attn`;
@@ -242,12 +266,14 @@ export function buildGraph(metadata: ModelMetadata, providerId: string): Model {
         metadata: { note: "Sliced out of the fused qkv_proj weight." },
       });
     } else {
+      const clipNote = clipQkv != null ? { note: `Clamped to [-${clipQkv}, ${clipQkv}] right after projection (this checkpoint's clip_qkv).` } : {};
       node(q, "q_projection", "Q Projection", attn, {
         inputs: [{ dims: seqH }],
         outputs: [{ dims: ["sequence_length", qDim] }],
         parameters: hasQkvBias
           ? [param(`${L}.self_attn.q_proj.weight`, wi, providerId), param(`${L}.self_attn.q_proj.bias`, wi, providerId)]
           : [param(`${L}.self_attn.q_proj.weight`, wi, providerId)],
+        metadata: clipNote,
       });
       node(k, "k_projection", "K Projection", attn, {
         inputs: [{ dims: seqH }],
@@ -255,6 +281,7 @@ export function buildGraph(metadata: ModelMetadata, providerId: string): Model {
         parameters: hasQkvBias
           ? [param(`${L}.self_attn.k_proj.weight`, wi, providerId), param(`${L}.self_attn.k_proj.bias`, wi, providerId)]
           : [param(`${L}.self_attn.k_proj.weight`, wi, providerId)],
+        metadata: clipNote,
       });
       node(v, "v_projection", "V Projection", attn, {
         inputs: [{ dims: seqH }],
@@ -262,6 +289,7 @@ export function buildGraph(metadata: ModelMetadata, providerId: string): Model {
         parameters: hasQkvBias
           ? [param(`${L}.self_attn.v_proj.weight`, wi, providerId), param(`${L}.self_attn.v_proj.bias`, wi, providerId)]
           : [param(`${L}.self_attn.v_proj.weight`, wi, providerId)],
+        metadata: clipNote,
       });
     }
     edge(rms1, q);
@@ -319,7 +347,7 @@ export function buildGraph(metadata: ModelMetadata, providerId: string): Model {
     let attnIntoResidual = outp;
     if (hasSandwichNorm) {
       const postAttnNorm = `${attn}.post_norm`;
-      rmsNormNode(postAttnNorm, "RMSNorm (post-attention, sandwich)", attn, `${L}.post_self_attn_layernorm.weight`);
+      normNode(postAttnNorm, "RMSNorm (post-attention, sandwich)", attn, `${L}.post_self_attn_layernorm.weight`);
       edge(outp, postAttnNorm);
       attnIntoResidual = postAttnNorm;
     }
@@ -334,7 +362,7 @@ export function buildGraph(metadata: ModelMetadata, providerId: string): Model {
     edge(b, res1, "skip");
 
     const rms2 = `${b}.rms2`;
-    rmsNormNode(rms2, "RMSNorm (pre-FFN)", b, `${L}.post_attention_layernorm.weight`);
+    normNode(rms2, normLabel("pre-FFN"), b, `${L}.post_attention_layernorm.weight`);
     edge(res1, rms2);
 
     const ffn = `${b}.ffn`;
@@ -401,7 +429,7 @@ export function buildGraph(metadata: ModelMetadata, providerId: string): Model {
     let ffnIntoResidual = down;
     if (hasSandwichNorm) {
       const postMlpNorm = `${ffn}.post_norm`;
-      rmsNormNode(postMlpNorm, "RMSNorm (post-FFN, sandwich)", ffn, `${L}.post_mlp_layernorm.weight`);
+      normNode(postMlpNorm, "RMSNorm (post-FFN, sandwich)", ffn, `${L}.post_mlp_layernorm.weight`);
       edge(down, postMlpNorm);
       ffnIntoResidual = postMlpNorm;
     }
@@ -419,7 +447,7 @@ export function buildGraph(metadata: ModelMetadata, providerId: string): Model {
   }
 
   const finalNorm = "norm";
-  rmsNormNode(finalNorm, "Final RMSNorm", "model", "model.norm.weight");
+  normNode(finalNorm, isLayerNormNoAffine ? "Final LayerNorm" : "Final RMSNorm", "model", "model.norm.weight");
   edge(prevOut, finalNorm);
 
   const tied = !wi["lm_head.weight"];
