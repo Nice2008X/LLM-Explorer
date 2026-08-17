@@ -1,4 +1,4 @@
-const DB_NAME = "llm-explorer-model-cache";
+const DB_NAME = "Tensorium-model-cache";
 const DB_VERSION = 1;
 const STORE_NAME = "files";
 
