@@ -340,7 +340,7 @@ input, select { font-family: inherit; }
 
 /* Each trigger button and its popover share one of these, so the popover's
    `right: 0` anchors under its own button rather than the whole controls bar. */
-.control-group { position: relative; display: flex; align-items: center; }
+.control-group { position: relative; display: flex; align-items: center; gap: 8px; }
 
 .load-different {
   background: var(--bg-chip);
@@ -352,6 +352,17 @@ input, select { font-family: inherit; }
   transition: background-color var(--transition-fast);
 }
 .load-different:hover { background: var(--bg-hover); }
+
+.close-model {
+  background: var(--bg-chip);
+  border: 1px solid var(--border-default);
+  color: var(--accent-text);
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  transition: background-color var(--transition-fast);
+}
+.close-model:hover { background: var(--bg-hover); }
 
 .load-model-panel {
   position: absolute;

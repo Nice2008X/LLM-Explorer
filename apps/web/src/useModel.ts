@@ -1,8 +1,36 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@tensorium/model-ir";
 import { fetchArrayBuffer, hfResolveUrl, peekModelType } from "@tensorium/hf-client";
 import { loadTokenizer, type Tokenizer } from "@tensorium/tokenizer";
 import { ADAPTERS } from "./adapters.js";
+
+/**
+ * Remembers the last Hugging-Face-sourced model across a page reload, so
+ * refreshing the "chart frame" page restores it instead of bouncing back to
+ * the home screen. Only ever holds a repo id, never local-file bytes —
+ * a page can't silently re-read files the user picked before a reload
+ * without a fresh user gesture, so local loads are deliberately not
+ * persisted here (see loadFromSource/reset below, which clear this on
+ * every local load and on an explicit "return to home").
+ */
+const LAST_REPO_KEY = "app:last-repo";
+
+function readPersistedRepo(): string | null {
+  try {
+    return window.localStorage.getItem(LAST_REPO_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedRepo(repo: string | null) {
+  try {
+    if (repo) window.localStorage.setItem(LAST_REPO_KEY, repo);
+    else window.localStorage.removeItem(LAST_REPO_KEY);
+  } catch {
+    // storage unavailable (private browsing, quota, ...) — refresh just won't restore the model
+  }
+}
 
 /** The exact bytes of each source file, kept around purely so "save model to disk" can hand the user back byte-identical files rather than re-serializing anything. */
 export interface ModelRawFiles {
@@ -67,6 +95,13 @@ export function useModel() {
       const [configBytes, tokenizerBytes] = await Promise.all([readRawFile(source, "config.json"), readRawFile(source, "tokenizer.json")]);
       const rawFiles: ModelRawFiles = { configBytes, weightsBytes: metadata.weightsBuffer, tokenizerBytes };
 
+      // Hugging-Face-sourced weights are already cached in IndexedDB by URL
+      // (see hf-client's fetchCachedArrayBuffer), so re-requesting this repo
+      // on the next page load is a cache hit, not a re-download — cheap
+      // enough to do automatically. Local sources clear this instead: their
+      // bytes only ever live in memory, so there's nothing safe to restore.
+      writePersistedRepo(source.kind === "huggingface" ? source.repo : null);
+
       setState({ status: "ready", model, metadata, weightProvider, adapter, source, tokenizer, rawFiles });
     } catch (err) {
       setState({ status: "error", error: err instanceof Error ? err.message : String(err) });
@@ -94,7 +129,24 @@ export function useModel() {
     [loadFromSource]
   );
 
-  const reset = useCallback(() => setState({ status: "idle" }), []);
+  // Explicit "return to home" — also clears the persisted repo, so a
+  // refresh of the now-empty home page stays on the home page instead of
+  // reloading the model the user just closed.
+  const reset = useCallback(() => {
+    setState({ status: "idle" });
+    writePersistedRepo(null);
+  }, []);
+
+  // Restore the last Hugging-Face-sourced model once, on mount — this is
+  // what makes refreshing the chart frame page stay there instead of
+  // dropping back to the home screen. loadFromSource is stable (useCallback
+  // with no deps), so this genuinely only needs to run once; StrictMode's
+  // dev-only double-invoke just re-requests the same repo a second time,
+  // which is a cache hit, not a real duplicate load.
+  useEffect(() => {
+    const repo = readPersistedRepo();
+    if (repo) loadFromSource({ kind: "huggingface", repo });
+  }, [loadFromSource]);
 
   return { state, load, loadLocalFiles, reset };
 }

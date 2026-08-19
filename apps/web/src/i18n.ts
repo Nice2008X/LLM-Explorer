@@ -14,6 +14,7 @@ export const LANGUAGES: { id: Language; label: string; nativeLabel: string }[] =
 
 const en = {
   "app.loadDifferentModel": "Load a different model",
+  "app.closeModel": "Close model",
   "app.settings": "Settings",
   "app.modelTree": "Model Tree",
   "app.inspector": "Inspector",
@@ -93,6 +94,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   en,
   zh: {
     "app.loadDifferentModel": "加载其他模型",
+    "app.closeModel": "关闭模型",
     "app.settings": "设置",
     "app.modelTree": "模型树",
     "app.inspector": "检查器",
@@ -167,6 +169,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   es: {
     "app.loadDifferentModel": "Cargar otro modelo",
+    "app.closeModel": "Cerrar modelo",
     "app.settings": "Configuración",
     "app.modelTree": "Árbol del modelo",
     "app.inspector": "Inspector",
@@ -241,6 +244,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   fr: {
     "app.loadDifferentModel": "Charger un autre modèle",
+    "app.closeModel": "Fermer le modèle",
     "app.settings": "Paramètres",
     "app.modelTree": "Arborescence du modèle",
     "app.inspector": "Inspecteur",
@@ -315,6 +319,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   de: {
     "app.loadDifferentModel": "Anderes Modell laden",
+    "app.closeModel": "Modell schließen",
     "app.settings": "Einstellungen",
     "app.modelTree": "Modellbaum",
     "app.inspector": "Inspektor",
@@ -389,6 +394,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   ja: {
     "app.loadDifferentModel": "別のモデルを読み込む",
+    "app.closeModel": "モデルを閉じる",
     "app.settings": "設定",
     "app.modelTree": "モデルツリー",
     "app.inspector": "インスペクター",
@@ -463,6 +469,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   ko: {
     "app.loadDifferentModel": "다른 모델 불러오기",
+    "app.closeModel": "모델 닫기",
     "app.settings": "설정",
     "app.modelTree": "모델 트리",
     "app.inspector": "인스펙터",
@@ -537,6 +544,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   pt: {
     "app.loadDifferentModel": "Carregar outro modelo",
+    "app.closeModel": "Fechar modelo",
     "app.settings": "Configurações",
     "app.modelTree": "Árvore do modelo",
     "app.inspector": "Inspetor",
@@ -611,6 +619,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
   },
   ru: {
     "app.loadDifferentModel": "Загрузить другую модель",
+    "app.closeModel": "Закрыть модель",
     "app.settings": "Настройки",
     "app.modelTree": "Дерево модели",
     "app.inspector": "Инспектор",

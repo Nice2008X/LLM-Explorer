@@ -54,7 +54,7 @@ function containingBlockId(model: Model, nodeId: string): string | null {
 }
 
 export function App() {
-  const { state, load, loadLocalFiles } = useModel();
+  const { state, load, loadLocalFiles, reset } = useModel();
   const { theme, setTheme } = useTheme();
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -233,6 +233,9 @@ export function App() {
         <div className="control-group">
           <button className="load-different" onClick={() => setLoadModelOpen((v) => !v)}>
             {t("app.loadDifferentModel")}
+          </button>
+          <button className="close-model" onClick={reset} title={t("app.closeModel")}>
+            {t("app.closeModel")}
           </button>
           <LoadModelPanel
             open={loadModelOpen}
