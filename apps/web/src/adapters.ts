@@ -9,6 +9,7 @@ import { PhiAdapter } from "@tensorium/adapter-phi";
 import { Glm4Adapter } from "@tensorium/adapter-glm4";
 import { OlmoAdapter } from "@tensorium/adapter-olmo";
 import { QwenMoeAdapter } from "@tensorium/adapter-qwen-moe";
+import { Qwen3MoeAdapter } from "@tensorium/adapter-qwen3-moe";
 
 /**
  * Every architecture the explorer supports. Adding a new one means writing
@@ -23,8 +24,10 @@ import { QwenMoeAdapter } from "@tensorium/adapter-qwen-moe";
  * (only a leading slice of each head gets RoPE) for GLM-4; a non-parametric
  * LayerNorm (no learnable weight or bias) and an optional Q/K/V clamp for
  * OLMo; a sparse Mixture-of-Experts FFN (a router picks a few experts per
- * token instead of running one dense FFN on every token) for Qwen2-MoE —
- * rather than separate copies of ~400 lines each).
+ * token instead of running one dense FFN on every token — every layer for
+ * Qwen2-MoE, every other layer for Qwen3-MoE, which keeps its dense layers
+ * as plain gated FFNs) for Qwen2-MoE/Qwen3-MoE — rather than separate
+ * copies of ~400 lines each).
  */
 export const ADAPTERS: ModelAdapter[] = [
   GPT2Adapter,
@@ -37,6 +40,7 @@ export const ADAPTERS: ModelAdapter[] = [
   Glm4Adapter,
   OlmoAdapter,
   QwenMoeAdapter,
+  Qwen3MoeAdapter,
 ];
 
 // NOTE: this MVP's WeightProvider downloads the whole safetensors file up
@@ -56,6 +60,7 @@ export const PRESET_MODELS = [
   { repo: "tiny-random/glm-4", label: "GLM-4 · tiny-random/glm-4 (2 layers, sandwich norm, partial rotary)", isMoE: false },
   { repo: "katuni4ka/tiny-random-olmo-hf", label: "OLMo · tiny-random-olmo-hf (2 layers, 2 heads, hidden=64, non-parametric LayerNorm)", isMoE: false },
   { repo: "katuni4ka/tiny-random-qwen1.5-moe", label: "Qwen2-MoE · tiny-random-qwen1.5-moe (4 layers, 8 experts, top-4 + shared expert)", isMoE: true },
+  { repo: "tiny-random/qwen3-moe", label: "Qwen3-MoE · tiny-random/qwen3-moe (2 layers, 1 dense + 1 MoE, QK-Norm, top-2 of 8)", isMoE: true },
 ];
 
 // NOTE on DeepSeek LLM: architecturally it's plain Llama (LlamaAdapter loads

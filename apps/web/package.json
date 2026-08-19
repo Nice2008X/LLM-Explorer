@@ -19,6 +19,7 @@
     "@tensorium/adapter-qwen": "*",
     "@tensorium/adapter-qwen-moe": "*",
     "@tensorium/adapter-qwen3": "*",
+    "@tensorium/adapter-qwen3-moe": "*",
     "@tensorium/hf-client": "*",
     "@tensorium/interpretability": "*",
     "@tensorium/model-ir": "*",

@@ -32,6 +32,9 @@ export interface LlamaFamilyRawConfig {
   moe_intermediate_size?: number;
   norm_topk_prob?: boolean;
   shared_expert_intermediate_size?: number;
+  /** MoE checkpoints don't have to route every layer: a layer is sparse only if it isn't listed in mlp_only_layers AND (layer_idx + 1) % decoder_sparse_step === 0 — everything else runs the plain dense gated FFN instead. Qwen2-MoE's step is 1 (every layer sparse); Qwen3-MoE's is 2 (every other layer). Defaults (1, []) make every layer sparse when omitted, matching the common case. */
+  decoder_sparse_step?: number;
+  mlp_only_layers?: number[];
 }
 
 export interface LlamaFamilyOptions {
@@ -120,6 +123,8 @@ export function buildModelConfig(raw: LlamaFamilyRawConfig, options: LlamaFamily
       moeIntermediateSize: raw.moe_intermediate_size,
       normTopkProb: raw.norm_topk_prob ?? false,
       hasSharedExpert: raw.shared_expert_intermediate_size != null,
+      decoderSparseStep: raw.decoder_sparse_step ?? 1,
+      mlpOnlyLayers: raw.mlp_only_layers ?? [],
     },
   };
 }
@@ -161,6 +166,13 @@ export function buildGraph(metadata: ModelMetadata, providerId: string): Model {
   const numExperts = Number(cfg.extra.numExperts ?? 0);
   const numExpertsPerTok = Number(cfg.extra.numExpertsPerTok ?? numExperts);
   const hasSharedExpert = cfg.extra.hasSharedExpert === true;
+  const decoderSparseStep = Number(cfg.extra.decoderSparseStep ?? 1);
+  const mlpOnlyLayers = (cfg.extra.mlpOnlyLayers as number[] | undefined) ?? [];
+  // Not every layer of an MoE checkpoint has to be sparse — Qwen2-MoE routes
+  // every layer (step 1), Qwen3-MoE only every other one (step 2), and
+  // either family can also name specific always-dense layers explicitly.
+  // Everything else falls back to the plain dense gated FFN below.
+  const isSparseLayer = (i: number) => isMoE && numExperts > 0 && !mlpOnlyLayers.includes(i) && (i + 1) % decoderSparseStep === 0;
   const normLabel = (suffix: string) => (isLayerNormNoAffine ? `LayerNorm (${suffix})` : `RMSNorm (${suffix})`);
 
   function node(id: string, type: NodeType, name: string, parentId: string | null, opts: Partial<ModelNode> = {}): ModelNode {
@@ -383,14 +395,15 @@ export function buildGraph(metadata: ModelMetadata, providerId: string): Model {
     normNode(rms2, normLabel("pre-FFN"), b, `${L}.post_attention_layernorm.weight`);
     edge(res1, rms2);
 
+    const layerIsSparse = isSparseLayer(i);
     const ffn = `${b}.ffn`;
-    node(ffn, "ffn", isMoE ? "Feed Forward (Mixture of Experts)" : "Feed Forward (gated)", b, {
+    node(ffn, "ffn", layerIsSparse ? "Feed Forward (Mixture of Experts)" : "Feed Forward (gated)", b, {
       inputs: [{ dims: seqH }],
       outputs: [{ dims: seqH }],
     });
 
     let ffnOut: string;
-    if (isMoE) {
+    if (layerIsSparse) {
       const router = `${ffn}.router`;
       node(router, "router", "Router", ffn, {
         inputs: [{ dims: seqH }],

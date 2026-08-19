@@ -45,6 +45,10 @@ export async function runInference(model: Model, weightProvider: WeightProvider,
   const numExpertsPerTok = Number(cfg.extra.numExpertsPerTok ?? numExperts);
   const hasSharedExpert = cfg.extra.hasSharedExpert === true;
   const normTopkProb = cfg.extra.normTopkProb === true;
+  const decoderSparseStep = Number(cfg.extra.decoderSparseStep ?? 1);
+  const mlpOnlyLayers = (cfg.extra.mlpOnlyLayers as number[] | undefined) ?? [];
+  // Same rule as graph.ts: not every layer of an MoE checkpoint is sparse.
+  const isSparseLayer = (i: number) => isMoE && numExperts > 0 && !mlpOnlyLayers.includes(i) && (i + 1) % decoderSparseStep === 0;
   const partialRotaryFactor = Number(cfg.extra.partialRotaryFactor ?? 1);
   const rotaryDim = Math.round(headDim * partialRotaryFactor);
   const qDim = numHeads * headDim;
@@ -234,7 +238,7 @@ export async function runInference(model: Model, weightProvider: WeightProvider,
     const rms2Out = record(`${b}.rms2`, applyNorm(res1, rms2g));
 
     let ffnOut: Matrix;
-    if (isMoE) {
+    if (isSparseLayer(i)) {
       ffnOut = await runMoEFfn(b, L, rms2Out);
     } else {
       let gateW: Matrix, upW: Matrix;

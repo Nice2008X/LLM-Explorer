@@ -35,33 +35,41 @@ interface Validation {
 }
 const IDLE_VALIDATION: Validation = { checking: false, check: null };
 
+interface PresetGroupSpec {
+  key: string;
+  title: ReactNode;
+  presets: { repo: string; label: string }[];
+}
+
 /**
- * A labeled, collapsible group of preset chips — used to separate the
- * dense-FFN architectures from the sparse Mixture-of-Experts ones, since
- * "which experts fired" only means anything for the latter. The group
- * title (e.g. "Models with MoE (Mixture-of-Experts)") stays fully visible
- * whether expanded or collapsed, so collapsing never hides which group
- * you're looking at — only the chips underneath it.
+ * Splits preset chips into tabs — one per group (e.g. "without MoE" vs.
+ * "with MoE (Mixture-of-Experts)") — instead of showing every chip at
+ * once. Only one group is visible at a time, so the list stays scannable
+ * as more architectures (and more presets per group) get added, without
+ * needing an internal scrollbar. Each tab's label always states its group
+ * name and count, so which group you're looking at is never ambiguous.
  */
-function PresetGroup({ title, presets, onPick }: { title: ReactNode; presets: { repo: string; label: string }[]; onPick: (repo: string) => void }) {
-  const [open, setOpen] = useState(true);
-  if (presets.length === 0) return null;
+function PresetTabs({ groups, onPick }: { groups: PresetGroupSpec[]; onPick: (repo: string) => void }) {
+  const nonEmptyGroups = useMemo(() => groups.filter((g) => g.presets.length > 0), [groups]);
+  const [activeKey, setActiveKey] = useState(nonEmptyGroups[0]?.key);
+  const active = nonEmptyGroups.find((g) => g.key === activeKey) ?? nonEmptyGroups[0];
+  if (!active) return null;
   return (
-    <div className="model-loader-preset-group">
-      <button type="button" className="model-loader-preset-group-header" onClick={() => setOpen((v) => !v)}>
-        <span className="model-loader-preset-group-chevron">{open ? "▾" : "▸"}</span>
-        <span>{title}</span>
-        <span className="model-loader-preset-group-count">({presets.length})</span>
-      </button>
-      {open && (
-        <div className="model-loader-presets">
-          {presets.map((p) => (
-            <button key={p.repo} className="preset-chip" onClick={() => onPick(p.repo)}>
-              {p.label}
-            </button>
-          ))}
-        </div>
-      )}
+    <div className="model-loader-preset-tabs-wrap">
+      <div className="model-loader-source-tabs model-loader-preset-tabs">
+        {nonEmptyGroups.map((g) => (
+          <button key={g.key} type="button" className={g.key === active.key ? "active" : ""} onClick={() => setActiveKey(g.key)}>
+            {g.title} <span className="model-loader-preset-tab-count">({g.presets.length})</span>
+          </button>
+        ))}
+      </div>
+      <div className="model-loader-presets">
+        {active.presets.map((p) => (
+          <button key={p.repo} className="preset-chip" onClick={() => onPick(p.repo)}>
+            {p.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -159,17 +167,11 @@ export function ModelLoader({ status, error, onLoad, onLoadLocal, excludeRepo, e
               {status === "loading" ? t("loader.loading") : t("loader.load")}
             </button>
           </form>
-          <PresetGroup
-            title={t("loader.presetsWithoutMoe")}
-            presets={presetsWithoutMoe}
-            onPick={(repo) => {
-              setRepo(repo);
-              onLoad(repo);
-            }}
-          />
-          <PresetGroup
-            title={t("loader.presetsWithMoe")}
-            presets={presetsWithMoe}
+          <PresetTabs
+            groups={[
+              { key: "without-moe", title: t("loader.presetsWithoutMoe"), presets: presetsWithoutMoe },
+              { key: "with-moe", title: t("loader.presetsWithMoe"), presets: presetsWithMoe },
+            ]}
             onPick={(repo) => {
               setRepo(repo);
               onLoad(repo);
