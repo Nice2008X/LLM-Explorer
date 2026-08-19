@@ -139,6 +139,10 @@ function erf(x: number): number {
   return sign * y;
 }
 
+export function sigmoid(x: number): number {
+  return 1 / (1 + Math.exp(-x));
+}
+
 export function silu(x: number): number {
   return x / (1 + Math.exp(-x));
 }
@@ -164,6 +168,15 @@ export function softmaxRow(row: number[]): number[] {
   const exps = row.map((v) => Math.exp(v - max));
   const sum = exps.reduce((a, b) => a + b, 0);
   return exps.map((v) => v / sum);
+}
+
+/** Indices of the k largest values, sorted descending — a Mixture-of-Experts router's "pick the top-k experts" step. */
+export function topKIndices(values: number[], k: number): number[] {
+  return values
+    .map((v, i) => ({ v, i }))
+    .sort((a, b) => b.v - a.v)
+    .slice(0, k)
+    .map(({ i }) => i);
 }
 
 export function embed(tokenIds: number[], table: Matrix): Matrix {

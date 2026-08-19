@@ -29,6 +29,8 @@ export type NodeType =
   | "activation"
   | "elementwise_mul"
   | "residual"
+  | "router"
+  | "moe_experts"
   | "lm_head"
   | "output";
 

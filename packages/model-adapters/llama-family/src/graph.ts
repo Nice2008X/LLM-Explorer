@@ -26,6 +26,12 @@ export interface LlamaFamilyRawConfig {
   partial_rotary_factor?: number;
   /** OLMo: clamps Q/K/V projections to [-clip_qkv, clip_qkv] right after projection, before RoPE. null (the common case) disables it. */
   clip_qkv?: number | null;
+  /** MoE config.json fields — present only on sparse checkpoints (e.g. Qwen2-MoE, Qwen3-MoE). How many experts exist, how many run per token, each expert's FFN width, whether the router's top-k weights get renormalized to sum to 1, and (Qwen2-MoE only) an always-on shared expert's FFN width. */
+  num_experts?: number;
+  num_experts_per_tok?: number;
+  moe_intermediate_size?: number;
+  norm_topk_prob?: boolean;
+  shared_expert_intermediate_size?: number;
 }
 
 export interface LlamaFamilyOptions {
@@ -49,6 +55,8 @@ export interface LlamaFamilyOptions {
   sandwichNorm?: boolean;
   /** OLMo (v1) replaces RMSNorm with a LayerNorm that has no learnable weight or bias at all (fixed gamma=1, beta=0) — every other model in this family uses "rmsnorm". */
   normType?: "rmsnorm" | "layernorm_no_affine";
+  /** Qwen2-MoE/Qwen3-MoE: this checkpoint's FFN is a sparse Mixture-of-Experts (a router picks num_experts_per_tok of num_experts SwiGLU experts per token, weighted-summed) instead of one dense gated FFN. Not derivable from config.json alone (a dense model simply omits the MoE fields above), so — like qkvBias/qkNorm — the adapter states it explicitly. */
+  moe?: boolean;
 }
 
 export function buildModelConfig(raw: LlamaFamilyRawConfig, options: LlamaFamilyOptions): ModelConfig {
@@ -106,6 +114,12 @@ export function buildModelConfig(raw: LlamaFamilyRawConfig, options: LlamaFamily
       sandwichNorm: options.sandwichNorm ?? false,
       normType,
       clipQkv: raw.clip_qkv ?? null,
+      isMoE: options.moe ?? false,
+      numExperts: raw.num_experts,
+      numExpertsPerTok: raw.num_experts_per_tok,
+      moeIntermediateSize: raw.moe_intermediate_size,
+      normTopkProb: raw.norm_topk_prob ?? false,
+      hasSharedExpert: raw.shared_expert_intermediate_size != null,
     },
   };
 }
@@ -143,6 +157,10 @@ export function buildGraph(metadata: ModelMetadata, providerId: string): Model {
   const hasSandwichNorm = cfg.extra.sandwichNorm === true;
   const isLayerNormNoAffine = cfg.extra.normType === "layernorm_no_affine";
   const clipQkv = cfg.extra.clipQkv != null ? Number(cfg.extra.clipQkv) : null;
+  const isMoE = cfg.extra.isMoE === true;
+  const numExperts = Number(cfg.extra.numExperts ?? 0);
+  const numExpertsPerTok = Number(cfg.extra.numExpertsPerTok ?? numExperts);
+  const hasSharedExpert = cfg.extra.hasSharedExpert === true;
   const normLabel = (suffix: string) => (isLayerNormNoAffine ? `LayerNorm (${suffix})` : `RMSNorm (${suffix})`);
 
   function node(id: string, type: NodeType, name: string, parentId: string | null, opts: Partial<ModelNode> = {}): ModelNode {
@@ -366,71 +384,117 @@ export function buildGraph(metadata: ModelMetadata, providerId: string): Model {
     edge(res1, rms2);
 
     const ffn = `${b}.ffn`;
-    node(ffn, "ffn", "Feed Forward (gated)", b, {
+    node(ffn, "ffn", isMoE ? "Feed Forward (Mixture of Experts)" : "Feed Forward (gated)", b, {
       inputs: [{ dims: seqH }],
       outputs: [{ dims: seqH }],
     });
 
-    const gate = `${ffn}.gate`;
-    const up = `${ffn}.up`;
-    if (hasFusedGateUp) {
-      // Phi3/Phi4: one gate_up_proj weight, split into two equal row-halves.
-      const gateUpName = `${L}.mlp.gate_up_proj.weight`;
-      node(gate, "linear", "Gate Projection", ffn, {
+    let ffnOut: string;
+    if (isMoE) {
+      const router = `${ffn}.router`;
+      node(router, "router", "Router", ffn, {
         inputs: [{ dims: seqH }],
-        outputs: [{ dims: ["sequence_length", cfg.intermediateSize] }],
-        parameters: [param(gateUpName, wi, providerId, { ranges: [{ start: 0, end: cfg.intermediateSize }] })],
-        metadata: { note: "Sliced out of the fused gate_up_proj weight (first half)." },
+        outputs: [{ dims: ["sequence_length", numExperts] }],
+        parameters: [param(`${L}.mlp.gate.weight`, wi, providerId)],
+        metadata: { numExperts, numExpertsPerTok, normTopkProb: cfg.extra.normTopkProb === true },
       });
-      node(up, "linear", "Up Projection", ffn, {
-        inputs: [{ dims: seqH }],
-        outputs: [{ dims: ["sequence_length", cfg.intermediateSize] }],
-        parameters: [param(gateUpName, wi, providerId, { ranges: [{ start: cfg.intermediateSize, end: 2 * cfg.intermediateSize }] })],
-        metadata: { note: "Sliced out of the fused gate_up_proj weight (second half)." },
+      edge(rms2, router);
+
+      // Every expert's weights are attached here (not split into per-expert
+      // graph nodes) so the graph stays readable regardless of expert count
+      // — the Tensor Explorer's search already lets you find any single
+      // expert's weight by name (e.g. "experts.3.gate_proj") from this one
+      // box, and the Inspector's parameter list shows all of them.
+      const expertParams: ParameterRef[] = [];
+      for (let e = 0; e < numExperts; e++) {
+        expertParams.push(
+          param(`${L}.mlp.experts.${e}.gate_proj.weight`, wi, providerId),
+          param(`${L}.mlp.experts.${e}.up_proj.weight`, wi, providerId),
+          param(`${L}.mlp.experts.${e}.down_proj.weight`, wi, providerId)
+        );
+      }
+      if (hasSharedExpert) {
+        expertParams.push(
+          param(`${L}.mlp.shared_expert.gate_proj.weight`, wi, providerId),
+          param(`${L}.mlp.shared_expert.up_proj.weight`, wi, providerId),
+          param(`${L}.mlp.shared_expert.down_proj.weight`, wi, providerId),
+          param(`${L}.mlp.shared_expert_gate.weight`, wi, providerId)
+        );
+      }
+
+      const experts = `${ffn}.experts`;
+      node(experts, "moe_experts", `Experts (top ${numExpertsPerTok} of ${numExperts}${hasSharedExpert ? " + shared" : ""})`, ffn, {
+        inputs: [{ dims: seqH }, { dims: ["sequence_length", numExperts] }],
+        outputs: [{ dims: seqH }],
+        parameters: expertParams,
+        metadata: { numExperts, numExpertsPerTok, hasSharedExpert, moeIntermediateSize: cfg.extra.moeIntermediateSize },
       });
+      edge(rms2, experts);
+      edge(router, experts);
+      ffnOut = experts;
     } else {
-      node(gate, "linear", "Gate Projection", ffn, {
-        inputs: [{ dims: seqH }],
+      const gate = `${ffn}.gate`;
+      const up = `${ffn}.up`;
+      if (hasFusedGateUp) {
+        // Phi3/Phi4: one gate_up_proj weight, split into two equal row-halves.
+        const gateUpName = `${L}.mlp.gate_up_proj.weight`;
+        node(gate, "linear", "Gate Projection", ffn, {
+          inputs: [{ dims: seqH }],
+          outputs: [{ dims: ["sequence_length", cfg.intermediateSize] }],
+          parameters: [param(gateUpName, wi, providerId, { ranges: [{ start: 0, end: cfg.intermediateSize }] })],
+          metadata: { note: "Sliced out of the fused gate_up_proj weight (first half)." },
+        });
+        node(up, "linear", "Up Projection", ffn, {
+          inputs: [{ dims: seqH }],
+          outputs: [{ dims: ["sequence_length", cfg.intermediateSize] }],
+          parameters: [param(gateUpName, wi, providerId, { ranges: [{ start: cfg.intermediateSize, end: 2 * cfg.intermediateSize }] })],
+          metadata: { note: "Sliced out of the fused gate_up_proj weight (second half)." },
+        });
+      } else {
+        node(gate, "linear", "Gate Projection", ffn, {
+          inputs: [{ dims: seqH }],
+          outputs: [{ dims: ["sequence_length", cfg.intermediateSize] }],
+          parameters: [param(`${L}.mlp.gate_proj.weight`, wi, providerId)],
+        });
+        node(up, "linear", "Up Projection", ffn, {
+          inputs: [{ dims: seqH }],
+          outputs: [{ dims: ["sequence_length", cfg.intermediateSize] }],
+          parameters: [param(`${L}.mlp.up_proj.weight`, wi, providerId)],
+        });
+      }
+      edge(rms2, gate);
+      edge(rms2, up);
+
+      const gateAct = `${ffn}.gate_act`;
+      node(gateAct, "activation", String(cfg.extra.activationFunction ?? "silu"), ffn, {
+        inputs: [{ dims: ["sequence_length", cfg.intermediateSize] }],
         outputs: [{ dims: ["sequence_length", cfg.intermediateSize] }],
-        parameters: [param(`${L}.mlp.gate_proj.weight`, wi, providerId)],
       });
-      node(up, "linear", "Up Projection", ffn, {
-        inputs: [{ dims: seqH }],
+      edge(gate, gateAct);
+
+      const mul = `${ffn}.mul`;
+      node(mul, "elementwise_mul", "Gate × Up", ffn, {
+        inputs: [{ dims: ["sequence_length", cfg.intermediateSize] }, { dims: ["sequence_length", cfg.intermediateSize] }],
         outputs: [{ dims: ["sequence_length", cfg.intermediateSize] }],
-        parameters: [param(`${L}.mlp.up_proj.weight`, wi, providerId)],
       });
+      edge(gateAct, mul);
+      edge(up, mul);
+
+      const down = `${ffn}.down`;
+      node(down, "linear", "Down Projection", ffn, {
+        inputs: [{ dims: ["sequence_length", cfg.intermediateSize] }],
+        outputs: [{ dims: seqH }],
+        parameters: [param(`${L}.mlp.down_proj.weight`, wi, providerId)],
+      });
+      edge(mul, down);
+      ffnOut = down;
     }
-    edge(rms2, gate);
-    edge(rms2, up);
 
-    const gateAct = `${ffn}.gate_act`;
-    node(gateAct, "activation", String(cfg.extra.activationFunction ?? "silu"), ffn, {
-      inputs: [{ dims: ["sequence_length", cfg.intermediateSize] }],
-      outputs: [{ dims: ["sequence_length", cfg.intermediateSize] }],
-    });
-    edge(gate, gateAct);
-
-    const mul = `${ffn}.mul`;
-    node(mul, "elementwise_mul", "Gate × Up", ffn, {
-      inputs: [{ dims: ["sequence_length", cfg.intermediateSize] }, { dims: ["sequence_length", cfg.intermediateSize] }],
-      outputs: [{ dims: ["sequence_length", cfg.intermediateSize] }],
-    });
-    edge(gateAct, mul);
-    edge(up, mul);
-
-    const down = `${ffn}.down`;
-    node(down, "linear", "Down Projection", ffn, {
-      inputs: [{ dims: ["sequence_length", cfg.intermediateSize] }],
-      outputs: [{ dims: seqH }],
-      parameters: [param(`${L}.mlp.down_proj.weight`, wi, providerId)],
-    });
-    edge(mul, down);
-
-    let ffnIntoResidual = down;
+    let ffnIntoResidual = ffnOut;
     if (hasSandwichNorm) {
       const postMlpNorm = `${ffn}.post_norm`;
       normNode(postMlpNorm, "RMSNorm (post-FFN, sandwich)", ffn, `${L}.post_mlp_layernorm.weight`);
-      edge(down, postMlpNorm);
+      edge(ffnOut, postMlpNorm);
       ffnIntoResidual = postMlpNorm;
     }
 

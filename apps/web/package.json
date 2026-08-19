@@ -17,6 +17,7 @@
     "@tensorium/adapter-olmo": "*",
     "@tensorium/adapter-phi": "*",
     "@tensorium/adapter-qwen": "*",
+    "@tensorium/adapter-qwen-moe": "*",
     "@tensorium/adapter-qwen3": "*",
     "@tensorium/hf-client": "*",
     "@tensorium/interpretability": "*",

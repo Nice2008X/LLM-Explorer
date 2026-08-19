@@ -16,8 +16,11 @@ import {
   ropeCosSin,
   rmsNorm,
   scaleMatrix,
+  sigmoid,
+  softmaxRow,
   tensorToMatrix,
   tensorToVector,
+  topKIndices,
   type Matrix,
 } from "@tensorium/nn-ops";
 
@@ -37,6 +40,11 @@ export async function runInference(model: Model, weightProvider: WeightProvider,
   const hasSandwichNorm = cfg.extra.sandwichNorm === true;
   const isLayerNormNoAffine = cfg.extra.normType === "layernorm_no_affine";
   const clipQkv = cfg.extra.clipQkv != null ? Number(cfg.extra.clipQkv) : null;
+  const isMoE = cfg.extra.isMoE === true;
+  const numExperts = Number(cfg.extra.numExperts ?? 0);
+  const numExpertsPerTok = Number(cfg.extra.numExpertsPerTok ?? numExperts);
+  const hasSharedExpert = cfg.extra.hasSharedExpert === true;
+  const normTopkProb = cfg.extra.normTopkProb === true;
   const partialRotaryFactor = Number(cfg.extra.partialRotaryFactor ?? 1);
   const rotaryDim = Math.round(headDim * partialRotaryFactor);
   const qDim = numHeads * headDim;
@@ -61,6 +69,83 @@ export async function runInference(model: Model, weightProvider: WeightProvider,
   const applyNorm = (x: Matrix, gamma: number[]): Matrix =>
     isLayerNormNoAffine ? layerNorm(x, gamma, zerosH, eps) : cfg.extra.rmsNormVariant === "gemma" ? gemmaRmsNorm(x, gamma, eps) : rmsNorm(x, gamma, eps);
   const clipQkvIfSet = (m: Matrix): Matrix => (clipQkv != null ? clamp(m, -clipQkv, clipQkv) : m);
+
+  // Qwen2-MoE/Qwen3-MoE's sparse FFN: a router scores every expert per
+  // token, the top numExpertsPerTok run (each a standard SwiGLU FFN, just
+  // sized by moe_intermediate_size instead of intermediate_size), and their
+  // outputs are summed weighted by the router's (optionally renormalized)
+  // probability. Qwen2-MoE additionally always runs one extra "shared"
+  // expert on every token, sigmoid-gated and added on top.
+  const runMoEFfn = async (b: string, L: string, x: Matrix): Promise<Matrix> => {
+    const routerW = await loadMatrix(`${L}.mlp.gate.weight`); // [numExperts, hidden], out_in
+    const routerLogits = linear(x, routerW, null, "out_in"); // [seq, numExperts]
+    const routerProbs = record(`${b}.ffn.router`, routerLogits.map((row) => softmaxRow(row)));
+
+    const S = x.length;
+    const H = x[0]?.length ?? 0;
+
+    // Per-token top-k expert selection, optionally renormalized so the
+    // selected weights sum to 1 (norm_topk_prob) rather than keeping their
+    // raw (necessarily <1) softmax-over-all-experts values.
+    const selection: { expertIdx: number; weight: number }[][] = routerProbs.map((row) => {
+      const idx = topKIndices(row, numExpertsPerTok);
+      let weights = idx.map((i) => row[i]);
+      if (normTopkProb) {
+        const sum = weights.reduce((a, v) => a + v, 0) || 1;
+        weights = weights.map((w) => w / sum);
+      }
+      return idx.map((expertIdx, slot) => ({ expertIdx, weight: weights[slot] }));
+    });
+
+    // Only fetch the experts at least one token actually selected this run
+    // — the real behavior of sparse MoE inference (most experts sit idle).
+    const needed = new Set<number>();
+    for (const sel of selection) for (const { expertIdx } of sel) needed.add(expertIdx);
+
+    const expertWeights = new Map<number, { gateW: Matrix; upW: Matrix; downW: Matrix }>();
+    await Promise.all(
+      [...needed].map(async (e) => {
+        const [gateW, upW, downW] = await Promise.all([
+          loadMatrix(`${L}.mlp.experts.${e}.gate_proj.weight`),
+          loadMatrix(`${L}.mlp.experts.${e}.up_proj.weight`),
+          loadMatrix(`${L}.mlp.experts.${e}.down_proj.weight`),
+        ]);
+        expertWeights.set(e, { gateW, upW, downW });
+      })
+    );
+
+    const combined: Matrix = Array.from({ length: S }, () => new Array(H).fill(0));
+    for (let s = 0; s < S; s++) {
+      for (const { expertIdx, weight } of selection[s]) {
+        const { gateW, upW, downW } = expertWeights.get(expertIdx)!;
+        const xRow: Matrix = [x[s]];
+        const act = applyActivation(linear(xRow, gateW, null, "out_in"), activationKind);
+        const upOut = linear(xRow, upW, null, "out_in");
+        const downOut = linear(mulMatricesElementwise(act, upOut), downW, null, "out_in");
+        for (let d = 0; d < H; d++) combined[s][d] += weight * downOut[0][d];
+      }
+    }
+
+    if (hasSharedExpert) {
+      const [sharedGateW, sharedUpW, sharedDownW, sharedGateGateW] = await Promise.all([
+        loadMatrix(`${L}.mlp.shared_expert.gate_proj.weight`),
+        loadMatrix(`${L}.mlp.shared_expert.up_proj.weight`),
+        loadMatrix(`${L}.mlp.shared_expert.down_proj.weight`),
+        loadMatrix(`${L}.mlp.shared_expert_gate.weight`), // [1, hidden]
+      ]);
+      const sharedAct = applyActivation(linear(x, sharedGateW, null, "out_in"), activationKind);
+      const sharedUpOut = linear(x, sharedUpW, null, "out_in");
+      const sharedDownOut = linear(mulMatricesElementwise(sharedAct, sharedUpOut), sharedDownW, null, "out_in"); // [seq, H]
+      const sharedGateLogits = linear(x, sharedGateGateW, null, "out_in"); // [seq, 1]
+      for (let s = 0; s < S; s++) {
+        const gate = sigmoid(sharedGateLogits[s][0]);
+        for (let d = 0; d < H; d++) combined[s][d] += gate * sharedDownOut[s][d];
+      }
+    }
+
+    const expertsOut = record(`${b}.ffn.experts`, combined);
+    return record(`${b}.ffn`, expertsOut);
+  };
 
   const embedTokens = await loadMatrix("model.embed_tokens.weight");
   let x = embed(tokenIds, embedTokens);
@@ -148,27 +233,32 @@ export async function runInference(model: Model, weightProvider: WeightProvider,
     const rms2g = await loadNormGamma(`${L}.post_attention_layernorm.weight`);
     const rms2Out = record(`${b}.rms2`, applyNorm(res1, rms2g));
 
-    let gateW: Matrix, upW: Matrix;
-    if (hasFusedGateUp) {
-      // Phi3/Phi4: one gate_up_proj weight, split into two equal row-halves.
-      const gateUpW = await loadMatrix(`${L}.mlp.gate_up_proj.weight`);
-      gateW = gateUpW.slice(0, cfg.intermediateSize);
-      upW = gateUpW.slice(cfg.intermediateSize, 2 * cfg.intermediateSize);
+    let ffnOut: Matrix;
+    if (isMoE) {
+      ffnOut = await runMoEFfn(b, L, rms2Out);
     } else {
-      gateW = await loadMatrix(`${L}.mlp.gate_proj.weight`);
-      upW = await loadMatrix(`${L}.mlp.up_proj.weight`);
+      let gateW: Matrix, upW: Matrix;
+      if (hasFusedGateUp) {
+        // Phi3/Phi4: one gate_up_proj weight, split into two equal row-halves.
+        const gateUpW = await loadMatrix(`${L}.mlp.gate_up_proj.weight`);
+        gateW = gateUpW.slice(0, cfg.intermediateSize);
+        upW = gateUpW.slice(cfg.intermediateSize, 2 * cfg.intermediateSize);
+      } else {
+        gateW = await loadMatrix(`${L}.mlp.gate_proj.weight`);
+        upW = await loadMatrix(`${L}.mlp.up_proj.weight`);
+      }
+      const gateOut = record(`${b}.ffn.gate`, linear(rms2Out, gateW, null, "out_in"));
+
+      const gateAct = record(`${b}.ffn.gate_act`, applyActivation(gateOut, activationKind));
+
+      const upOut = record(`${b}.ffn.up`, linear(rms2Out, upW, null, "out_in"));
+
+      const mulOut = record(`${b}.ffn.mul`, mulMatricesElementwise(gateAct, upOut));
+
+      const downW = await loadMatrix(`${L}.mlp.down_proj.weight`);
+      const ffnProjected = record(`${b}.ffn.down`, linear(mulOut, downW, null, "out_in"));
+      ffnOut = record(`${b}.ffn`, ffnProjected);
     }
-    const gateOut = record(`${b}.ffn.gate`, linear(rms2Out, gateW, null, "out_in"));
-
-    const gateAct = record(`${b}.ffn.gate_act`, applyActivation(gateOut, activationKind));
-
-    const upOut = record(`${b}.ffn.up`, linear(rms2Out, upW, null, "out_in"));
-
-    const mulOut = record(`${b}.ffn.mul`, mulMatricesElementwise(gateAct, upOut));
-
-    const downW = await loadMatrix(`${L}.mlp.down_proj.weight`);
-    const ffnProjected = record(`${b}.ffn.down`, linear(mulOut, downW, null, "out_in"));
-    const ffnOut = record(`${b}.ffn`, ffnProjected);
 
     let ffnForResidual = ffnOut;
     if (hasSandwichNorm) {

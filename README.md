@@ -3,7 +3,7 @@
 An interactive, in-browser explorer and debugger for large language model
 internals. Point it at a Hugging Face repo that ships `safetensors`
 weights for one of the [supported architectures](#supported-architectures)
-(GPT-2, Llama, Mistral, Gemma, Qwen2, Qwen3, Phi-3/4, GLM-4, or OLMo) and it parses the
+(GPT-2, Llama, Mistral, Gemma, Qwen2, Qwen3, Phi-3/4, GLM-4, OLMo, or Qwen2-MoE) and it parses the
 model's real config and weights, renders its architecture as a navigable
 graph, runs an actual forward pass in the browser (no backend, no GPU),
 and lets you inspect every tensor, watch predictions form layer by layer,
@@ -110,10 +110,12 @@ one weight (GPT-2's `c_attn`, Phi's `qkv_proj`/`gate_up_proj`) without
 special-casing the rest of the pipeline.
 
 Most of the supported architectures (Llama, Mistral, Gemma, Qwen2/2.5,
-Qwen3, Phi-3/4, GLM-4, OLMo) are RoPE + gated-MLP "Llama-shaped" models
-that differ only in a handful of concrete details (GQA ratio, an explicit
-`head_dim`, a bias here, a fused projection there, or — OLMo's case — a
-non-parametric LayerNorm instead of RMSNorm). Rather than
+Qwen3, Phi-3/4, GLM-4, OLMo, Qwen2-MoE) are RoPE + gated-MLP "Llama-shaped"
+models that differ only in a handful of concrete details (GQA ratio, an
+explicit `head_dim`, a bias here, a fused projection there, a non-parametric
+LayerNorm instead of RMSNorm for OLMo, or — Qwen2-MoE's case — swapping the
+single dense FFN for a router plus a bank of sparsely-activated expert
+FFNs). Rather than
 duplicating the graph-building and forward-pass code per architecture,
 they're all thin wrappers around one shared, option-parameterized engine
 (`adapter-llama-family`) — see [Adding a new
@@ -177,6 +179,7 @@ apps/
 | Phi-3 / Phi-4 | `adapter-phi` | [`tiny-random/phi-4`](https://huggingface.co/tiny-random/phi-4) |
 | GLM-4 | `adapter-glm4` | [`tiny-random/glm-4`](https://huggingface.co/tiny-random/glm-4) |
 | OLMo | `adapter-olmo` | [`katuni4ka/tiny-random-olmo-hf`](https://huggingface.co/katuni4ka/tiny-random-olmo-hf) |
+| Qwen2-MoE | `adapter-qwen-moe` | [`katuni4ka/tiny-random-qwen1.5-moe`](https://huggingface.co/katuni4ka/tiny-random-qwen1.5-moe) |
 
 These are all deliberately tiny (randomly-initialized, few-layer) test
 checkpoints, chosen so the full model can be loaded and explored instantly
@@ -188,13 +191,16 @@ DeepSeek's MoE/latent-attention architectures), so `adapter-llama` already
 loads it — see
 [`yujiepan/deepseek-llm-tiny-random`](https://huggingface.co/yujiepan/deepseek-llm-tiny-random).
 
-Full-size, multimodal, active-MoE, or state-space/hybrid architectures
-(e.g. Gemma 3n/4, GLM-4.5V, GLM-5, Qwen-VL, Llama 4, Phi-4-flash, Bamba)
-aren't supported yet — they need either genuinely large-checkpoint
-streaming or Model IR extensions this project doesn't have yet
-(Mixture-of-Experts routing, multi-head latent attention, vision towers,
-Mamba/state-space
-layers), rather than just another adapter.
+Sparse Mixture-of-Experts is supported (Qwen2-MoE above: a router, a bank
+of expert FFNs, and — for checkpoints that have one — an always-on shared
+expert, all real graph nodes with a real forward pass, not a placeholder).
+What's still out of scope is full-size, multimodal, or state-space/hybrid
+architectures (e.g. Gemma 3n/4, GLM-4.5V, GLM-5, Qwen-VL, Llama 4,
+Phi-4-flash, Bamba, or a production-scale MoE like Mixtral/DeepSeek-V3) —
+these need either genuinely large-checkpoint streaming (this MVP downloads
+a whole safetensors file up front) or Model IR extensions this project
+doesn't have yet (multi-head latent attention, vision towers,
+Mamba/state-space layers), rather than just another adapter.
 
 ## Getting started
 
@@ -313,8 +319,12 @@ project's own reimplementation of the same idea.
 - Only OLMo (v1) is supported; OLMo 2 uses a different block topology
   (RMSNorm applied after each sub-layer instead of before it, plus
   per-head QK-norm) that needs its own adapter.
-- Multimodal and active-MoE architectures aren't supported (see
+- Multimodal architectures, and MoE checkpoints large enough to need
+  streamed (not upfront-downloaded) weights, aren't supported (see
   [Supported architectures](#supported-architectures)).
+- Only Qwen2-MoE's variant of sparse MoE is implemented; Qwen3-MoE (QK-Norm,
+  no shared expert) and other MoE families (Mixtral-style, DeepSeek-style)
+  need their own adapter.
 - Token attribution is occlusion-based only — no gradient-based
   attribution.
 - The IndexedDB cache is per-browser, not shared across users or devices —

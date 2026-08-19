@@ -8,6 +8,7 @@ import { Qwen3Adapter } from "@tensorium/adapter-qwen3";
 import { PhiAdapter } from "@tensorium/adapter-phi";
 import { Glm4Adapter } from "@tensorium/adapter-glm4";
 import { OlmoAdapter } from "@tensorium/adapter-olmo";
+import { QwenMoeAdapter } from "@tensorium/adapter-qwen-moe";
 
 /**
  * Every architecture the explorer supports. Adding a new one means writing
@@ -21,9 +22,22 @@ import { OlmoAdapter } from "@tensorium/adapter-olmo";
  * Phi; a sandwich norm (extra post-sub-layer RMSNorm) and partial rotary
  * (only a leading slice of each head gets RoPE) for GLM-4; a non-parametric
  * LayerNorm (no learnable weight or bias) and an optional Q/K/V clamp for
- * OLMo — rather than separate copies of ~400 lines each).
+ * OLMo; a sparse Mixture-of-Experts FFN (a router picks a few experts per
+ * token instead of running one dense FFN on every token) for Qwen2-MoE —
+ * rather than separate copies of ~400 lines each).
  */
-export const ADAPTERS: ModelAdapter[] = [GPT2Adapter, LlamaAdapter, MistralAdapter, GemmaAdapter, QwenAdapter, Qwen3Adapter, PhiAdapter, Glm4Adapter, OlmoAdapter];
+export const ADAPTERS: ModelAdapter[] = [
+  GPT2Adapter,
+  LlamaAdapter,
+  MistralAdapter,
+  GemmaAdapter,
+  QwenAdapter,
+  Qwen3Adapter,
+  PhiAdapter,
+  Glm4Adapter,
+  OlmoAdapter,
+  QwenMoeAdapter,
+];
 
 // NOTE: this MVP's WeightProvider downloads the whole safetensors file up
 // front (fine for models this size — a few hundred KB to a few MB). A
@@ -41,6 +55,7 @@ export const PRESET_MODELS = [
   { repo: "tiny-random/phi-4", label: "Phi-4 · tiny-random/phi-4 (2 layers, GQA 2:1 heads, fused QKV + gate/up)" },
   { repo: "tiny-random/glm-4", label: "GLM-4 · tiny-random/glm-4 (2 layers, sandwich norm, partial rotary)" },
   { repo: "katuni4ka/tiny-random-olmo-hf", label: "OLMo · tiny-random-olmo-hf (2 layers, 2 heads, hidden=64, non-parametric LayerNorm)" },
+  { repo: "katuni4ka/tiny-random-qwen1.5-moe", label: "Qwen2-MoE · tiny-random-qwen1.5-moe (4 layers, 8 experts, top-4 + shared expert)" },
 ];
 
 // NOTE on DeepSeek LLM: architecturally it's plain Llama (LlamaAdapter loads

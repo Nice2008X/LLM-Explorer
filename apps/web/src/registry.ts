@@ -175,6 +175,20 @@ export const componentRegistry: Record<NodeType, NodeTypeInfo> = {
     formula: "y = x + SubLayer(x)",
     category: "addition",
   },
+  router: {
+    label: "Router",
+    color: "#d946ef",
+    description: "A Mixture-of-Experts model's gate: scores every expert for each token, then picks the top few to actually run. Most of the network sits idle for any given token — only its chosen experts do work.",
+    formula: "p = softmax(X W_router), then keep the top-k of p",
+    category: "linear",
+  },
+  moe_experts: {
+    label: "Experts",
+    color: "#d946ef",
+    description: "A bank of independent feed-forward networks (\"experts\"). Each token only runs through the handful the Router selected for it, weighted by the Router's confidence, then optionally added to an always-on \"shared\" expert every token runs through regardless.",
+    formula: "FFN(x) = Σ (routing_weight_e · Expert_e(x)) for e in top-k",
+    category: "other",
+  },
   lm_head: {
     label: "LM Head",
     color: "#be185d",
