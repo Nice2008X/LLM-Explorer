@@ -213,6 +213,17 @@ input, select { font-family: inherit; }
   align-items: center;
   justify-content: center;
 }
+.app-restoring { display: flex; flex-direction: column; align-items: center; gap: 12px; color: var(--text-secondary); }
+.app-restoring-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid var(--border-default);
+  border-top-color: var(--accent);
+  animation: spin 0.9s linear infinite;
+}
+.app-restoring-text { font-size: 13px; }
+
 .model-loader {
   width: 520px;
   padding: 32px;
@@ -246,6 +257,22 @@ input, select { font-family: inherit; }
 }
 .model-loader-form button:hover:not(:disabled) { background: var(--accent-hover); }
 .model-loader-form button:disabled { opacity: 0.6; cursor: default; }
+.model-loader-preset-group { margin-top: 16px; }
+.model-loader-preset-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.model-loader-preset-group-header:hover { color: var(--text-primary); }
+.model-loader-preset-group-chevron { font-size: 10px; color: var(--text-tertiary); width: 10px; }
+.model-loader-preset-group-count { color: var(--text-tertiary); font-weight: 400; }
+.model-loader-preset-group .model-loader-presets { margin-top: 10px; }
 .model-loader-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .preset-chip {
   padding: 6px 10px;

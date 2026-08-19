@@ -62,7 +62,18 @@ async function readRawFile(source: ModelSource, filename: string): Promise<Array
 }
 
 export function useModel() {
-  const [state, setState] = useState<ModelState>({ status: "idle" });
+  // Starting straight in "loading" (rather than "idle" and flipping to
+  // "loading" a moment later inside an effect) means the very first render
+  // already skips the home screen when there's a model to restore — no
+  // frame where the interactive "pick a model" form flashes before the
+  // restore kicks in.
+  const [state, setState] = useState<ModelState>(() => (readPersistedRepo() ? { status: "loading" } : { status: "idle" }));
+  // True only for the mount-time auto-restore below, not for a normal
+  // "Load a different model" click — lets the UI show a plain "restoring
+  // your session" spinner instead of the full model-picker form, and lets
+  // App.tsx know to keep the previous selection/view instead of resetting
+  // them once the restored model lands.
+  const [restoring, setRestoring] = useState<boolean>(() => !!readPersistedRepo());
 
   const loadFromSource = useCallback(async (source: ModelSource) => {
     setState({ status: "loading" });
@@ -145,8 +156,9 @@ export function useModel() {
   // which is a cache hit, not a real duplicate load.
   useEffect(() => {
     const repo = readPersistedRepo();
-    if (repo) loadFromSource({ kind: "huggingface", repo });
+    if (!repo) return;
+    loadFromSource({ kind: "huggingface", repo }).finally(() => setRestoring(false));
   }, [loadFromSource]);
 
-  return { state, load, loadLocalFiles, reset };
+  return { state, load, loadLocalFiles, reset, restoring };
 }

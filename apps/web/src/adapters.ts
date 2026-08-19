@@ -46,16 +46,16 @@ export const ADAPTERS: ModelAdapter[] = [
 // in the project notes — that needs a backend doing true HTTP range reads
 // (see README.md "Known limitation"), not a browser-only preset here.
 export const PRESET_MODELS = [
-  { repo: "hf-internal-testing/tiny-random-gpt2", label: "GPT-2 · tiny-random-gpt2 (5 layers, 4 heads, hidden=32)" },
-  { repo: "hf-internal-testing/tiny-random-LlamaForCausalLM", label: "Llama · tiny-random-LlamaForCausalLM (2 layers, 4 heads, hidden=16)" },
-  { repo: "yujiepan/mistral-tiny-random", label: "Mistral · mistral-tiny-random (2 layers, GQA 4:2 heads, hidden=8)" },
-  { repo: "fxmarty/tiny-random-GemmaForCausalLM", label: "Gemma · tiny-random-GemmaForCausalLM (1 layer, 2 heads, hidden=32)" },
-  { repo: "yujiepan/qwen2-tiny-random", label: "Qwen2 · qwen2-tiny-random (2 layers, GQA 4:2 heads, Q/K/V bias)" },
-  { repo: "tiny-random/qwen3", label: "Qwen3 · tiny-random/qwen3 (2 layers, GQA 2:1 heads, QK-Norm)" },
-  { repo: "tiny-random/phi-4", label: "Phi-4 · tiny-random/phi-4 (2 layers, GQA 2:1 heads, fused QKV + gate/up)" },
-  { repo: "tiny-random/glm-4", label: "GLM-4 · tiny-random/glm-4 (2 layers, sandwich norm, partial rotary)" },
-  { repo: "katuni4ka/tiny-random-olmo-hf", label: "OLMo · tiny-random-olmo-hf (2 layers, 2 heads, hidden=64, non-parametric LayerNorm)" },
-  { repo: "katuni4ka/tiny-random-qwen1.5-moe", label: "Qwen2-MoE · tiny-random-qwen1.5-moe (4 layers, 8 experts, top-4 + shared expert)" },
+  { repo: "hf-internal-testing/tiny-random-gpt2", label: "GPT-2 · tiny-random-gpt2 (5 layers, 4 heads, hidden=32)", isMoE: false },
+  { repo: "hf-internal-testing/tiny-random-LlamaForCausalLM", label: "Llama · tiny-random-LlamaForCausalLM (2 layers, 4 heads, hidden=16)", isMoE: false },
+  { repo: "yujiepan/mistral-tiny-random", label: "Mistral · mistral-tiny-random (2 layers, GQA 4:2 heads, hidden=8)", isMoE: false },
+  { repo: "fxmarty/tiny-random-GemmaForCausalLM", label: "Gemma · tiny-random-GemmaForCausalLM (1 layer, 2 heads, hidden=32)", isMoE: false },
+  { repo: "yujiepan/qwen2-tiny-random", label: "Qwen2 · qwen2-tiny-random (2 layers, GQA 4:2 heads, Q/K/V bias)", isMoE: false },
+  { repo: "tiny-random/qwen3", label: "Qwen3 · tiny-random/qwen3 (2 layers, GQA 2:1 heads, QK-Norm)", isMoE: false },
+  { repo: "tiny-random/phi-4", label: "Phi-4 · tiny-random/phi-4 (2 layers, GQA 2:1 heads, fused QKV + gate/up)", isMoE: false },
+  { repo: "tiny-random/glm-4", label: "GLM-4 · tiny-random/glm-4 (2 layers, sandwich norm, partial rotary)", isMoE: false },
+  { repo: "katuni4ka/tiny-random-olmo-hf", label: "OLMo · tiny-random-olmo-hf (2 layers, 2 heads, hidden=64, non-parametric LayerNorm)", isMoE: false },
+  { repo: "katuni4ka/tiny-random-qwen1.5-moe", label: "Qwen2-MoE · tiny-random-qwen1.5-moe (4 layers, 8 experts, top-4 + shared expert)", isMoE: true },
 ];
 
 // NOTE on DeepSeek LLM: architecturally it's plain Llama (LlamaAdapter loads

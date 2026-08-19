@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import type { Model, Tensor } from "@tensorium/model-ir";
 import { useModel } from "./useModel.js";
 import { useInference } from "./useInference.js";
@@ -54,13 +54,17 @@ function containingBlockId(model: Model, nodeId: string): string | null {
 }
 
 export function App() {
-  const { state, load, loadLocalFiles, reset } = useModel();
+  const { state, load, loadLocalFiles, reset, restoring } = useModel();
   const { theme, setTheme } = useTheme();
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [loadModelOpen, setLoadModelOpen] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [view, setView] = useState<GraphView>({ kind: "architecture" });
+  // Persisted (not plain useState) so a refresh that restores the last
+  // Hugging-Face-sourced model — see useModel's `restoring` — can also land
+  // back on the same node/view instead of resetting to the top-level
+  // architecture view every time.
+  const [selectedId, setSelectedId] = useLocalStorageState<string | null>("chart:selected-id", null);
+  const [view, setView] = useLocalStorageState<GraphView>("chart:view", { kind: "architecture" });
   const [selectedTokenIndex, setSelectedTokenIndex] = useState<number | null>(null);
   const [compareEnabled, setCompareEnabled] = useState(false);
   const [bottomTab, setBottomTab] = useState<BottomTab>("tensor");
@@ -79,10 +83,25 @@ export function App() {
   const inference = useInference(state.model, state.weightProvider, state.adapter, state.tokenizer);
   const promptB = useInference(state.model, state.weightProvider, state.adapter, state.tokenizer);
 
+  // Captured once, on the very first render — true only when this mount
+  // started out restoring a persisted model after a page refresh (see
+  // useModel's `restoring`). While true, the reset-on-model-change effect
+  // below is skipped entirely (including its mount-time firing before the
+  // restored model has even landed) so the persisted selectedId/view aren't
+  // wiped out from under the restore. It flips to false — permanently, for
+  // the rest of this mount — the moment `state.model` is first observed
+  // defined, i.e. right when the restored model actually lands, so any
+  // *later* switch to a genuinely different model resets as normal.
+  const skipResetRef = useRef(restoring);
+
   // A different model can have completely different node ids (fewer/more
   // blocks, different architecture) — stale selection/view referencing the
   // old model's ids would otherwise crash ArchitectureGraph's breadcrumb.
   useEffect(() => {
+    if (skipResetRef.current) {
+      if (state.model) skipResetRef.current = false;
+      return;
+    }
     setSelectedId(null);
     setView({ kind: "architecture" });
     setSelectedTokenIndex(null);
@@ -104,13 +123,26 @@ export function App() {
   }, [inference.state.result]);
 
   if (state.status !== "ready" || !state.model || !state.weightProvider) {
+    // While the mount-time restore is in flight, show a plain spinner
+    // instead of the full model-picker form — otherwise a refresh on the
+    // chart page would visibly flash the home screen's title/input/preset
+    // chips before snapping back to the chart, which reads as "it navigated
+    // to home and back" even though nothing was actually reset.
+    const showRestoring = restoring && state.status !== "error";
     return (
       <div className="app-loader-screen">
         <div className="top-right-controls">
           <SettingsButton open={settingsOpen} onToggle={() => setSettingsOpen((v) => !v)} />
           <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} theme={theme} onThemeChange={setTheme} />
         </div>
-        <ModelLoader status={state.status} error={state.error} onLoad={load} onLoadLocal={loadLocalFiles} />
+        {showRestoring ? (
+          <div className="app-restoring">
+            <div className="app-restoring-spinner" />
+            <div className="app-restoring-text">{t("app.restoringSession")}</div>
+          </div>
+        ) : (
+          <ModelLoader status={state.status} error={state.error} onLoad={load} onLoadLocal={loadLocalFiles} />
+        )}
       </div>
     );
   }
@@ -231,11 +263,11 @@ export function App() {
       <ModelInfoBar model={model} />
       <div className="top-right-controls">
         <div className="control-group">
-          <button className="load-different" onClick={() => setLoadModelOpen((v) => !v)}>
-            {t("app.loadDifferentModel")}
-          </button>
           <button className="close-model" onClick={reset} title={t("app.closeModel")}>
             {t("app.closeModel")}
+          </button>
+          <button className="load-different" onClick={() => setLoadModelOpen((v) => !v)}>
+            {t("app.loadDifferentModel")}
           </button>
           <LoadModelPanel
             open={loadModelOpen}

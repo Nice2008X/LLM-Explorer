@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { PRESET_MODELS } from "../adapters.js";
 import { useTranslation } from "./LanguageContext.js";
 import { checkJsonFile, checkWeightsFile, type FileCheck } from "../localFileValidation.js";
@@ -35,6 +35,37 @@ interface Validation {
 }
 const IDLE_VALIDATION: Validation = { checking: false, check: null };
 
+/**
+ * A labeled, collapsible group of preset chips — used to separate the
+ * dense-FFN architectures from the sparse Mixture-of-Experts ones, since
+ * "which experts fired" only means anything for the latter. The group
+ * title (e.g. "Models with MoE (Mixture-of-Experts)") stays fully visible
+ * whether expanded or collapsed, so collapsing never hides which group
+ * you're looking at — only the chips underneath it.
+ */
+function PresetGroup({ title, presets, onPick }: { title: ReactNode; presets: { repo: string; label: string }[]; onPick: (repo: string) => void }) {
+  const [open, setOpen] = useState(true);
+  if (presets.length === 0) return null;
+  return (
+    <div className="model-loader-preset-group">
+      <button type="button" className="model-loader-preset-group-header" onClick={() => setOpen((v) => !v)}>
+        <span className="model-loader-preset-group-chevron">{open ? "▾" : "▸"}</span>
+        <span>{title}</span>
+        <span className="model-loader-preset-group-count">({presets.length})</span>
+      </button>
+      {open && (
+        <div className="model-loader-presets">
+          {presets.map((p) => (
+            <button key={p.repo} className="preset-chip" onClick={() => onPick(p.repo)}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Inline feedback under a file input: a "checking…" state while content-sniffing runs, then the validator's error/warning, or a plain size confirmation once a file passes. Content is sniffed (not just the file extension) so a mislabeled or corrupt file is caught here instead of failing deep inside the model adapter later. */
 function FileRowStatus({ file, validation }: { file: File | null; validation: Validation }) {
   if (!file) return null;
@@ -51,6 +82,8 @@ export function ModelLoader({ status, error, onLoad, onLoadLocal, excludeRepo, e
     () => PRESET_MODELS.filter((p) => p.repo !== excludeRepo).sort((a, b) => a.label.localeCompare(b.label)),
     [excludeRepo]
   );
+  const presetsWithoutMoe = useMemo(() => sortedPresets.filter((p) => !p.isMoE), [sortedPresets]);
+  const presetsWithMoe = useMemo(() => sortedPresets.filter((p) => p.isMoE), [sortedPresets]);
   const [repo, setRepo] = useState(() => PRESET_MODELS.find((p) => p.repo !== excludeRepo)?.repo ?? "");
   const [mode, setMode] = useState<SourceMode>("huggingface");
   const [configFile, setConfigFile] = useState<File | null>(null);
@@ -126,20 +159,22 @@ export function ModelLoader({ status, error, onLoad, onLoadLocal, excludeRepo, e
               {status === "loading" ? t("loader.loading") : t("loader.load")}
             </button>
           </form>
-          <div className="model-loader-presets">
-            {sortedPresets.map((p) => (
-              <button
-                key={p.repo}
-                className="preset-chip"
-                onClick={() => {
-                  setRepo(p.repo);
-                  onLoad(p.repo);
-                }}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+          <PresetGroup
+            title={t("loader.presetsWithoutMoe")}
+            presets={presetsWithoutMoe}
+            onPick={(repo) => {
+              setRepo(repo);
+              onLoad(repo);
+            }}
+          />
+          <PresetGroup
+            title={t("loader.presetsWithMoe")}
+            presets={presetsWithMoe}
+            onPick={(repo) => {
+              setRepo(repo);
+              onLoad(repo);
+            }}
+          />
         </>
       ) : (
         <form
