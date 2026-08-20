@@ -1,4 +1,4 @@
-import type { Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@tensorium/model-ir";
+import type { LoadProgress, Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@tensorium/model-ir";
 import { SafetensorsWeightProvider } from "@tensorium/tensor-core";
 import { loadSafetensorsMetadata } from "@tensorium/hf-client";
 import { buildModelConfig, buildGraph, runInference, type LlamaFamilyRawConfig } from "@tensorium/adapter-llama-family";
@@ -19,8 +19,8 @@ export const GemmaAdapter: ModelAdapter = {
     return metadata.model_type === "gemma" || (metadata.architectures ?? []).some((a) => a === "GemmaForCausalLM" || a === "GemmaModel");
   },
 
-  async loadMetadata(source: ModelSource): Promise<ModelMetadata> {
-    const { rawConfig, weightIndex, weightsBuffer } = await loadSafetensorsMetadata<LlamaFamilyRawConfig>(source);
+  async loadMetadata(source: ModelSource, onProgress?: (progress: LoadProgress) => void): Promise<ModelMetadata> {
+    const { rawConfig, weightIndex, weightsBuffer } = await loadSafetensorsMetadata<LlamaFamilyRawConfig>(source, onProgress);
 
     return {
       architecture: (rawConfig.architectures && rawConfig.architectures[0]) || "GemmaForCausalLM",

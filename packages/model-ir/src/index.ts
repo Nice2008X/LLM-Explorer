@@ -208,11 +208,25 @@ export interface Intervention {
   replacementValue?: Tensor;
 }
 
+/**
+ * Reported during `loadMetadata` so the UI can show something more useful
+ * than an inert spinner. `loadedBytes`/`totalBytes` are only meaningful for
+ * the phases that actually stream bytes over the network ("weights",
+ * "tokenizer") — `totalBytes` itself is further only known when the server
+ * sends a Content-Length header, which HF's CDN does for these files but
+ * isn't guaranteed in general, so consumers must treat it as optional.
+ */
+export interface LoadProgress {
+  phase: "config" | "weights" | "parsing" | "building" | "tokenizer";
+  loadedBytes?: number;
+  totalBytes?: number;
+}
+
 export interface ModelAdapter {
   id: string;
   displayName: string;
   canLoad(source: ModelSource, metadata?: { architectures?: string[]; model_type?: string }): boolean;
-  loadMetadata(source: ModelSource): Promise<ModelMetadata>;
+  loadMetadata(source: ModelSource, onProgress?: (progress: LoadProgress) => void): Promise<ModelMetadata>;
   buildGraph(metadata: ModelMetadata): Model;
   getWeightProvider(metadata: ModelMetadata): WeightProvider;
   /**

@@ -1,5 +1,7 @@
 # Tensorium
 
+**[Live demo →](https://nice2008x.github.io/Tensorium/)**
+
 An interactive, in-browser explorer and debugger for large language model
 internals. Point it at a Hugging Face repo that ships `safetensors`
 weights for one of the [supported architectures](#supported-architectures)
@@ -17,7 +19,7 @@ written in TypeScript. Fetched files are cached in the browser's IndexedDB
 network round trip at all — files over 50 MB are never written to that
 cache and always come straight from Hugging Face instead.
 
-![Screenshot of Tensorium: the model tree, a transformer block's Attention internals with a scope box grouping its Q/K/V/Output projections, the Inspector panel showing an Input Construction breakdown, and the Tensor Explorer's activation heatmap](docs/screenshot.png)
+![Screenshot of Tensorium: a Qwen3-MoE transformer block's Attention internals with a scope box grouping its Q/K/V/Output projections, the model tree showing its Mixture-of-Experts feed-forward layer, the Inspector panel with the attention formula and GQA metadata, and the Tensor Explorer's activation heatmap](docs/screenshot.png)
 
 Note: the built-in presets are tiny, randomly-initialized test checkpoints,
 not real trained models — predictions won't be coherent. This tool is for

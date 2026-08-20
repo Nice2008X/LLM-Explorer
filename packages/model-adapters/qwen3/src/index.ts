@@ -1,4 +1,4 @@
-import type { Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@tensorium/model-ir";
+import type { LoadProgress, Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@tensorium/model-ir";
 import { SafetensorsWeightProvider } from "@tensorium/tensor-core";
 import { loadSafetensorsMetadata } from "@tensorium/hf-client";
 import { buildModelConfig, buildGraph, runInference, type LlamaFamilyRawConfig } from "@tensorium/adapter-llama-family";
@@ -22,8 +22,8 @@ export const Qwen3Adapter: ModelAdapter = {
     return metadata.model_type === "qwen3" || (metadata.architectures ?? []).some((a) => a === "Qwen3ForCausalLM");
   },
 
-  async loadMetadata(source: ModelSource): Promise<ModelMetadata> {
-    const { rawConfig, weightIndex, weightsBuffer } = await loadSafetensorsMetadata<LlamaFamilyRawConfig>(source);
+  async loadMetadata(source: ModelSource, onProgress?: (progress: LoadProgress) => void): Promise<ModelMetadata> {
+    const { rawConfig, weightIndex, weightsBuffer } = await loadSafetensorsMetadata<LlamaFamilyRawConfig>(source, onProgress);
 
     return {
       architecture: (rawConfig.architectures && rawConfig.architectures[0]) || "Qwen3ForCausalLM",

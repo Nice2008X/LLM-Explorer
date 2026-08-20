@@ -3,7 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tensorium</title>
+    <title>Tensorium — In-Browser LLM Architecture Explorer</title>
+    <meta
+      name="description"
+      content="Point Tensorium at a Hugging Face model repo and it parses the real config and safetensors weights, renders the architecture as a navigable graph, runs an actual forward pass in your browser (no backend, no GPU), and lets you inspect every tensor and run causal interventions. Supports GPT-2, Llama, Mistral, Gemma, Qwen2/3, Phi, GLM-4, OLMo, and Qwen2/3-MoE."
+    />
+    <link rel="canonical" href="https://nice2008x.github.io/Tensorium/" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://nice2008x.github.io/Tensorium/" />
+    <meta property="og:title" content="Tensorium — In-Browser LLM Architecture Explorer" />
+    <meta
+      property="og:description"
+      content="Explore a real Hugging Face LLM's architecture as a navigable graph, run an actual forward pass entirely in your browser, and inspect every tensor — no backend, no GPU."
+    />
+    <meta property="og:image" content="https://nice2008x.github.io/Tensorium/social-preview.png" />
+    <meta property="og:image:width" content="1600" />
+    <meta property="og:image:height" content="980" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Tensorium — In-Browser LLM Architecture Explorer" />
+    <meta
+      name="twitter:description"
+      content="Explore a real Hugging Face LLM's architecture as a navigable graph, run an actual forward pass entirely in your browser, and inspect every tensor — no backend, no GPU."
+    />
+    <meta name="twitter:image" content="https://nice2008x.github.io/Tensorium/social-preview.png" />
     <script>
       // Applied before React mounts (and before first paint) so switching
       // themes across reloads never flashes the previous/default theme.
