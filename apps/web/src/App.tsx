@@ -7,6 +7,7 @@ import { useTheme } from "./components/ThemeSwitcher.js";
 import { useTranslation } from "./components/LanguageContext.js";
 import { SettingsButton, SettingsPanel } from "./components/SettingsPanel.js";
 import { ModelLoader } from "./components/ModelLoader.js";
+import { LoadProgressBar } from "./components/LoadProgressBar.js";
 import { LoadModelPanel } from "./components/LoadModelPanel.js";
 import { SaveModelDialog, type SaveModelFile } from "./components/SaveModelDialog.js";
 import { ModelInfoBar } from "./components/ModelInfoBar.js";
@@ -54,7 +55,7 @@ function containingBlockId(model: Model, nodeId: string): string | null {
 }
 
 export function App() {
-  const { state, load, loadLocalFiles, reset, restoring } = useModel();
+  const { state, load, loadLocalFiles, reset, restoring, progress } = useModel();
   const { theme, setTheme } = useTheme();
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -139,9 +140,10 @@ export function App() {
           <div className="app-restoring">
             <div className="app-restoring-spinner" />
             <div className="app-restoring-text">{t("app.restoringSession")}</div>
+            {progress && <LoadProgressBar progress={progress} />}
           </div>
         ) : (
-          <ModelLoader status={state.status} error={state.error} onLoad={load} onLoadLocal={loadLocalFiles} />
+          <ModelLoader status={state.status} error={state.error} progress={progress} onLoad={load} onLoadLocal={loadLocalFiles} />
         )}
       </div>
     );

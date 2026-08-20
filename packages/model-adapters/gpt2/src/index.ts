@@ -1,4 +1,4 @@
-import type { Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@tensorium/model-ir";
+import type { LoadProgress, Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@tensorium/model-ir";
 import { SafetensorsWeightProvider } from "@tensorium/tensor-core";
 import { loadSafetensorsMetadata } from "@tensorium/hf-client";
 import { buildModelConfig, buildGraph, type GPT2RawConfig } from "./graph.js";
@@ -15,8 +15,8 @@ export const GPT2Adapter: ModelAdapter = {
     return metadata.model_type === "gpt2" || (metadata.architectures ?? []).some((a) => a.startsWith("GPT2"));
   },
 
-  async loadMetadata(source: ModelSource): Promise<ModelMetadata> {
-    const { rawConfig, weightIndex, weightsBuffer } = await loadSafetensorsMetadata<GPT2RawConfig>(source);
+  async loadMetadata(source: ModelSource, onProgress?: (progress: LoadProgress) => void): Promise<ModelMetadata> {
+    const { rawConfig, weightIndex, weightsBuffer } = await loadSafetensorsMetadata<GPT2RawConfig>(source, onProgress);
 
     return {
       architecture: (rawConfig.architectures && rawConfig.architectures[0]) || "GPT2LMHeadModel",

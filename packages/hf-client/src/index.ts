@@ -1,21 +1,22 @@
-import type { ModelMetadata, ModelSource } from "@tensorium/model-ir";
+import type { LoadProgress, ModelMetadata, ModelSource } from "@tensorium/model-ir";
 import { parseSafetensorsHeader } from "@tensorium/tensor-core";
-import { fetchCachedArrayBuffer } from "./modelCache.js";
+import { fetchCachedArrayBuffer, type ByteProgressCallback } from "./modelCache.js";
 
 export { MAX_CACHEABLE_BYTES } from "./modelCache.js";
+export type { ByteProgressCallback } from "./modelCache.js";
 
 export function hfResolveUrl(source: Extract<ModelSource, { kind: "huggingface" }>, file: string): string {
   const revision = source.revision ?? "main";
   return `https://huggingface.co/${source.repo}/resolve/${revision}/${file}`;
 }
 
-export async function fetchJson<T>(url: string): Promise<T> {
-  const bytes = await fetchCachedArrayBuffer(url);
+export async function fetchJson<T>(url: string, onProgress?: ByteProgressCallback): Promise<T> {
+  const bytes = await fetchCachedArrayBuffer(url, onProgress);
   return JSON.parse(new TextDecoder().decode(bytes)) as T;
 }
 
-export async function fetchArrayBuffer(url: string): Promise<ArrayBuffer> {
-  return fetchCachedArrayBuffer(url);
+export async function fetchArrayBuffer(url: string, onProgress?: ByteProgressCallback): Promise<ArrayBuffer> {
+  return fetchCachedArrayBuffer(url, onProgress);
 }
 
 /** Reads one file out of a `{ kind: "local" }` source's in-memory file map — the local-loading equivalent of a fetch. */
@@ -57,11 +58,25 @@ export interface RawSafetensorsMetadata<TConfig> {
  * `{ kind: "local" }` source (files the user already picked, just read
  * straight out of memory) — adapters don't need to know which one it was.
  */
-export async function loadSafetensorsMetadata<TConfig>(source: ModelSource): Promise<RawSafetensorsMetadata<TConfig>> {
+export async function loadSafetensorsMetadata<TConfig>(
+  source: ModelSource,
+  onProgress?: (progress: LoadProgress) => void
+): Promise<RawSafetensorsMetadata<TConfig>> {
+  onProgress?.({ phase: "config" });
   const rawConfig =
     source.kind === "local" ? readLocalJson<TConfig>(source, "config.json") : await fetchJson<TConfig>(hfResolveUrl(source, "config.json"));
-  const weightsBuffer =
-    source.kind === "local" ? readLocalBytes(source, "model.safetensors") : await fetchArrayBuffer(hfResolveUrl(source, "model.safetensors"));
+
+  let weightsBuffer: ArrayBuffer;
+  if (source.kind === "local") {
+    weightsBuffer = readLocalBytes(source, "model.safetensors");
+    onProgress?.({ phase: "weights", loadedBytes: weightsBuffer.byteLength, totalBytes: weightsBuffer.byteLength });
+  } else {
+    weightsBuffer = await fetchArrayBuffer(hfResolveUrl(source, "model.safetensors"), (loadedBytes, totalBytes) =>
+      onProgress?.({ phase: "weights", loadedBytes, totalBytes })
+    );
+  }
+
+  onProgress?.({ phase: "parsing" });
   const { header } = parseSafetensorsHeader(weightsBuffer);
 
   const weightIndex: ModelMetadata["weightIndex"] = {};

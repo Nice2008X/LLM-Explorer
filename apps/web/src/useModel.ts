@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@tensorium/model-ir";
+import type { LoadProgress, Model, ModelAdapter, ModelMetadata, ModelSource, WeightProvider } from "@tensorium/model-ir";
 import { fetchArrayBuffer, hfResolveUrl, peekModelType } from "@tensorium/hf-client";
 import { loadTokenizer, type Tokenizer } from "@tensorium/tokenizer";
 import { ADAPTERS } from "./adapters.js";
@@ -74,9 +74,11 @@ export function useModel() {
   // App.tsx know to keep the previous selection/view instead of resetting
   // them once the restored model lands.
   const [restoring, setRestoring] = useState<boolean>(() => !!readPersistedRepo());
+  const [progress, setProgress] = useState<LoadProgress | undefined>(undefined);
 
   const loadFromSource = useCallback(async (source: ModelSource) => {
     setState({ status: "loading" });
+    setProgress({ phase: "config" });
     try {
       // Read just enough of config.json to know what kind of model this is,
       // *before* any adapter commits to fetching (and possibly misreading)
@@ -91,14 +93,17 @@ export function useModel() {
         );
       }
 
-      const metadata = await adapter.loadMetadata(source);
+      const metadata = await adapter.loadMetadata(source, setProgress);
+      setProgress({ phase: "building" });
       const model = adapter.buildGraph(metadata);
       const weightProvider = adapter.getWeightProvider(metadata);
 
       // Best-effort: not every repo ships a tokenizer.json this loader
       // understands, and static architecture/weight browsing doesn't need
       // one at all — only the "run inference" panel does.
-      const tokenizer = await loadTokenizer(source).catch(() => undefined);
+      const tokenizer = await loadTokenizer(source, (loadedBytes, totalBytes) => setProgress({ phase: "tokenizer", loadedBytes, totalBytes })).catch(
+        () => undefined
+      );
 
       // The weights buffer is already sitting in `metadata` — reusing it
       // here avoids a second download of what can be a large file. Only
@@ -114,8 +119,10 @@ export function useModel() {
       writePersistedRepo(source.kind === "huggingface" ? source.repo : null);
 
       setState({ status: "ready", model, metadata, weightProvider, adapter, source, tokenizer, rawFiles });
+      setProgress(undefined);
     } catch (err) {
       setState({ status: "error", error: err instanceof Error ? err.message : String(err) });
+      setProgress(undefined);
     }
   }, []);
 
@@ -145,6 +152,7 @@ export function useModel() {
   // reloading the model the user just closed.
   const reset = useCallback(() => {
     setState({ status: "idle" });
+    setProgress(undefined);
     writePersistedRepo(null);
   }, []);
 
@@ -160,5 +168,5 @@ export function useModel() {
     loadFromSource({ kind: "huggingface", repo }).finally(() => setRestoring(false));
   }, [loadFromSource]);
 
-  return { state, load, loadLocalFiles, reset, restoring };
+  return { state, load, loadLocalFiles, reset, restoring, progress };
 }

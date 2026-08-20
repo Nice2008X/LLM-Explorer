@@ -62,23 +62,58 @@ async function putCached(url: string, bytes: ArrayBuffer): Promise<void> {
   });
 }
 
+/** `loadedBytes` counts up as the response streams in; `totalBytes` is undefined when the server doesn't send Content-Length. */
+export type ByteProgressCallback = (loadedBytes: number, totalBytes: number | undefined) => void;
+
 /**
  * Fetches `url` as raw bytes, transparently caching the result in
  * IndexedDB (skipping anything over MAX_CACHEABLE_BYTES) so a re-click of
  * the same preset loads instantly with no network request at all —
  * `fetchJson` and `fetchArrayBuffer` both route through this, so
  * config.json/tokenizer.json/model.safetensors are all covered uniformly.
+ *
+ * A cache hit reports `onProgress` once, immediately, at 100% — there's no
+ * network transfer to time, but callers shouldn't have to special-case that.
  */
-export async function fetchCachedArrayBuffer(url: string): Promise<ArrayBuffer> {
+export async function fetchCachedArrayBuffer(url: string, onProgress?: ByteProgressCallback): Promise<ArrayBuffer> {
   const cached = await getCached(url);
-  if (cached) return cached;
+  if (cached) {
+    onProgress?.(cached.byteLength, cached.byteLength);
+    return cached;
+  }
 
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status} ${res.statusText}`);
-  const bytes = await res.arrayBuffer();
 
-  if (bytes.byteLength <= MAX_CACHEABLE_BYTES) {
-    await putCached(url, bytes);
+  // Streaming reads are only worth the extra bookkeeping when someone's
+  // actually watching — otherwise a plain arrayBuffer() is simpler and just
+  // as fast.
+  if (!onProgress || !res.body) {
+    const bytes = await res.arrayBuffer();
+    onProgress?.(bytes.byteLength, bytes.byteLength);
+    if (bytes.byteLength <= MAX_CACHEABLE_BYTES) await putCached(url, bytes);
+    return bytes;
   }
-  return bytes;
+
+  const totalHeader = res.headers.get("content-length");
+  const totalBytes = totalHeader ? Number(totalHeader) : undefined;
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let loadedBytes = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loadedBytes += value.byteLength;
+    onProgress(loadedBytes, totalBytes);
+  }
+  const bytes = new Uint8Array(loadedBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  if (bytes.byteLength <= MAX_CACHEABLE_BYTES) await putCached(url, bytes.buffer);
+  return bytes.buffer;
 }

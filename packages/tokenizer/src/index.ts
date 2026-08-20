@@ -1,5 +1,5 @@
 import type { ModelSource } from "@tensorium/model-ir";
-import { fetchJson, hfResolveUrl, readLocalJson } from "@tensorium/hf-client";
+import { fetchJson, hfResolveUrl, readLocalJson, type ByteProgressCallback } from "@tensorium/hf-client";
 import { bpeMerge } from "./bpe.js";
 import { gpt2ByteDecode, gpt2Pretokenize, resolveByteLevel, type PreTokenizerSpec } from "./gpt2Pretokenize.js";
 import { normalizerHasPrepend, normalizerRequiresNFC, spBpeDecodePieces, spBpePretokenize, type NormalizerSpec } from "./llamaPretokenize.js";
@@ -39,9 +39,11 @@ interface RawTokenizerJson {
  * assumption that came before it (see resolveByteLevel's and
  * normalizerHasPrepend's doc comments for the specific ones).
  */
-export async function loadTokenizer(source: ModelSource): Promise<Tokenizer> {
+export async function loadTokenizer(source: ModelSource, onProgress?: ByteProgressCallback): Promise<Tokenizer> {
   const raw =
-    source.kind === "local" ? readLocalJson<RawTokenizerJson>(source, "tokenizer.json") : await fetchJson<RawTokenizerJson>(hfResolveUrl(source, "tokenizer.json"));
+    source.kind === "local"
+      ? readLocalJson<RawTokenizerJson>(source, "tokenizer.json")
+      : await fetchJson<RawTokenizerJson>(hfResolveUrl(source, "tokenizer.json"), onProgress);
   if (raw.model.type !== "BPE") {
     throw new Error(`Unsupported tokenizer model type: "${raw.model.type}" (only BPE fast tokenizers are supported)`);
   }

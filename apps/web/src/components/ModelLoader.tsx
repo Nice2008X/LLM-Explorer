@@ -1,8 +1,10 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
+import type { LoadProgress } from "@tensorium/model-ir";
 import { PRESET_MODELS } from "../adapters.js";
 import { useTranslation } from "./LanguageContext.js";
 import { checkJsonFile, checkWeightsFile, type FileCheck } from "../localFileValidation.js";
 import { formatBytes } from "../format.js";
+import { LoadProgressBar } from "./LoadProgressBar.js";
 
 export interface LocalModelFiles {
   name: string;
@@ -14,6 +16,7 @@ export interface LocalModelFiles {
 interface Props {
   status: "idle" | "loading" | "ready" | "error";
   error?: string;
+  progress?: LoadProgress;
   onLoad: (repo: string) => void;
   onLoadLocal: (files: LocalModelFiles) => void;
   /** Presets matching this repo id are left out of the list — used when re-opening the loader for a model that's already loaded, so it isn't offered back as if it were a fresh option. */
@@ -84,7 +87,7 @@ function FileRowStatus({ file, validation }: { file: File | null; validation: Va
   return null;
 }
 
-export function ModelLoader({ status, error, onLoad, onLoadLocal, excludeRepo, embedded }: Props) {
+export function ModelLoader({ status, error, progress, onLoad, onLoadLocal, excludeRepo, embedded }: Props) {
   const { t } = useTranslation();
   const sortedPresets = useMemo(
     () => PRESET_MODELS.filter((p) => p.repo !== excludeRepo).sort((a, b) => a.label.localeCompare(b.label)),
@@ -223,6 +226,7 @@ export function ModelLoader({ status, error, onLoad, onLoadLocal, excludeRepo, e
           </button>
         </form>
       )}
+      {status === "loading" && progress && <LoadProgressBar progress={progress} />}
       {status === "error" && <div className="model-loader-error">{error}</div>}
     </div>
   );
